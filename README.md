@@ -18,6 +18,11 @@ cmsenv
 ```
 ### 2) Cloning master git branch under src directory
 ```
-git clone -b master --single-branch https://github.com/jeongeun/SimpleNtuplizer.git
+git clone -b master https://github.com/jeongeun/SimpleNtuplizer.git
 scram b -j 4
+```
+
+### 3) Test with cmsRun 
+```
+cmsRun makeTree_run3.py
 ```
