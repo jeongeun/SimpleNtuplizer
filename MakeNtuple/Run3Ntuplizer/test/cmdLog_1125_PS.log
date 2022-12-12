@@ -1,0 +1,20 @@
+### isMC  False
+### GlobalTag  cms.string('124X_dataRun3_Prompt_v4')
+### InFileName  cms.untracked.vstring('root://cms-xrd-global.cern.ch//store/data/Run2022C/Muon/MINIAOD/PromptReco-v1/000/356/426/00000/66a38e5c-e248-41bb-8729-d2d486018e87.root')
+### OutFileName  cms.string('ntuple_data.root')
+25-Nov-2022 15:01:33 KST  Initiating request to open file root://cms-xrd-global.cern.ch//store/data/Run2022C/Muon/MINIAOD/PromptReco-v1/000/356/426/00000/66a38e5c-e248-41bb-8729-d2d486018e87.root
+%MSG-w XrdAdaptor:  file_open 25-Nov-2022 15:01:39 KST pre-events
+Data is served from fnal.gov instead of original site CERN-CMSGLOBAL-02
+%MSG
+25-Nov-2022 15:01:51 KST  Successfully opened file root://cms-xrd-global.cern.ch//store/data/Run2022C/Muon/MINIAOD/PromptReco-v1/000/356/426/00000/66a38e5c-e248-41bb-8729-d2d486018e87.root
+%MSG-w XrdAdaptor:  (NoModuleName) 25-Nov-2022 15:01:57 KST pre-events
+Data is now served from fnal.gov, gridka.de instead of previous fnal.gov
+%MSG
+25-Nov-2022 15:02:14 KST  Closed file root://cms-xrd-global.cern.ch//store/data/Run2022C/Muon/MINIAOD/PromptReco-v1/000/356/426/00000/66a38e5c-e248-41bb-8729-d2d486018e87.root
+----- Begin Fatal Exception 25-Nov-2022 15:02:14 KST-----------------------
+An exception of category 'Configuration' occurred while
+   [0] Constructing the EventProcessor
+   [1] Constructing module: class=Run3Ntuplizer label='ntuple'
+Exception Message:
+MissingParameter: Parameter 'stageL1Trigger' not found.
+----- End Fatal Exception -------------------------------------------------

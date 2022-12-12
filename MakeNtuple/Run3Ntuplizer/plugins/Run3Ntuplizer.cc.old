@@ -1,0 +1,883 @@
+/*
+ * \file Run3Ntuplizer.cc
+ *
+ * \author Jeong eun LEE
+ * Created:  Thu, 27 Oct 2022 
+ * Written for miniAOD
+ */ //EgammaWork/ElectronNtupler/plugins/SimpleElectronNtupler.cc
+
+// Standard C++ includes
+#include <memory>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <cmath>
+
+// CMSSW data format
+#include "FWCore/Framework/interface/Frameworkfwd.h"
+#include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/MakerMacros.h"
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/Utilities/interface/InputTag.h"
+
+#include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
+#include "DataFormats/PatCandidates/interface/Electron.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+#include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/Candidate/interface/Candidate.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/EgammaCandidates/interface/ConversionFwd.h"
+#include "DataFormats/EgammaCandidates/interface/Conversion.h"
+#include "CommonTools/Egamma/interface/ConversionTools.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+#include "CommonTools/Egamma/interface/EffectiveAreas.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
+#include "DataFormats/Math/interface/deltaR.h"
+
+#include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/PatCandidates/interface/VIDCutFlowResult.h"
+
+#include "FWCore/Common/interface/TriggerNames.h"
+#include "DataFormats/Common/interface/TriggerResults.h"
+#include "DataFormats/PatCandidates/interface/TriggerObjectStandAlone.h"
+#include "DataFormats/PatCandidates/interface/PackedTriggerPrescales.h"
+#include "DataFormats/HLTReco/interface/TriggerEvent.h"
+#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
+
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
+
+// ROOT includes
+#include "map"
+#include "Math/VectorUtil.h"
+#include "TLorentzVector.h"
+#include "TFile.h"
+#include "TTree.h"
+#include "TMath.h"
+#include "TH1F.h"
+#include "TH2F.h"
+#include "TCanvas.h"
+#include "TVectorD.h"
+#include "TMatrixD.h"
+#include "TMatrixDSym.h"
+#include "TMatrixDSymEigen.h"
+
+using namespace edm;
+using std::cout;
+using std::endl;
+using std::vector;
+
+// class declaration
+
+class Run3Ntuplizer : public edm::EDAnalyzer {
+   public:
+      explicit Run3Ntuplizer(const edm::ParameterSet&);
+      ~Run3Ntuplizer();
+
+      static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+
+      enum ElectronMatchType {UNMATCHED = 0,
+                              TRUE_PROMPT_ELECTRON,
+                              TRUE_ELECTRON_FROM_TAU,
+                              TRUE_NON_PROMPT_ELECTRON}; // The last does not include tau parents
+
+   private:
+      virtual void beginJob() override;
+      virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
+      virtual void endJob() override;
+      //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
+      //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
+
+      int matchToTruth(const edm::Ptr<reco::GsfElectron> el, const edm::Handle<edm::View<reco::GenParticle>> &prunedGenParticles, float &genPt);
+      void findFirstNonElectronMother(const reco::Candidate *particle, int &ancestorPID, int &ancestorStatus);
+      void printCutFlowResult(vid::CutFlowResult &cutflow);
+
+      // ----------member data ---------------------------
+      // Data members that are the same for AOD and miniAOD
+      edm::EDGetTokenT<edm::View<PileupSummaryInfo> > pileupToken_;
+      edm::EDGetTokenT<double> rhoToken_;
+      edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
+      edm::EDGetTokenT<GenEventInfoProduct> genEventInfoProduct_;
+
+      // MiniAOD case data members
+      edm::EDGetToken electronsToken_;
+      edm::EDGetTokenT<reco::VertexCollection> vtxToken_;
+      edm::EDGetTokenT<edm::View<reco::GenParticle> > genParticlesToken_;
+      edm::EDGetTokenT<reco::ConversionCollection> conversionsToken_;
+      //ID decisions objects
+      edm::EDGetTokenT<edm::ValueMap<bool> > eleVetoIdMapToken_;
+      edm::EDGetTokenT<edm::ValueMap<bool> > eleLooseIdMapToken_;
+      edm::EDGetTokenT<edm::ValueMap<bool> > eleMediumIdMapToken_;
+      edm::EDGetTokenT<edm::ValueMap<bool> > eleTightIdMapToken_;
+      edm::EDGetTokenT<edm::ValueMap<bool> > eleHEEPIdMapToken_;
+      // One example of full information about the cut flow
+      edm::EDGetTokenT<edm::ValueMap<vid::CutFlowResult> > eleIdFullInfoMapToken_;
+             
+      // Verbose output for ID
+      bool verboseIdFlag_;
+      bool doGenMatch_;
+
+      // trigger
+      edm::EDGetTokenT<trigger::TriggerEvent> triggerEventLabel_;
+      edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
+      edm::EDGetTokenT<pat::TriggerObjectStandAloneCollection> triggerObjectsToken_;
+      edm::EDGetTokenT<pat::PackedTriggerPrescales> triggerPrescalesToken_;
+
+
+      int LoopNumber;
+      double triggerFilterDeltaPtCut_;
+      double triggerFilterDeltaRCut_;
+
+
+      TTree *tree_;
+
+      // all variables for the output tree
+      Int_t       run_;
+      Int_t       lumis_;
+      Long64_t    event_;
+      Bool_t      isData_;
+
+      // trigger
+      //std::vector<std::string> HLTname_;
+      //std::vector<bool> HLTaccept_;
+      //std::vector<Float_t> prescaleForIndex_;
+      //std::vector<Float_t> triggObj_pt_;
+      //std::vector<Float_t> triggObj_eta_;
+      //std::vector<Float_t> triggObj_phi_;
+
+      ULong64_t   HLTMuX_;
+      ULong64_t   HLTMuXIsPrescaled_;
+      ULong64_t   HLTEleX_;
+      ULong64_t   HLTEleXIsPrescaled_;
+      ULong64_t   HLTPhoX_;
+      ULong64_t   HLTPhoXIsPrescaled_;
+      ULong64_t   HLTMETX_;
+      ULong64_t   HLTMETXIsPrescaled_;
+
+      std::vector<std::string> alltriggers_in_run_;
+      //std::vector<std::string> triggerLabelsName_ ;
+
+      Bool_t   isHLTEle27Pass_;
+      Bool_t   isHLTEle35Pass_;
+      Bool_t   isHLTEle115Pass_;
+      Bool_t   isHLTPho175Pass_;
+      Bool_t   isHLTPho200Pass_;
+      Bool_t   isHLTMuPass_;
+
+      Int_t   pvNTracks_; // Num of Tracks in primary vertex
+      Float_t genWeight_; // weight (can be negative)
+      Int_t   nPUTrue_;   // true pile-up
+      Int_t   nPU_;       // generated pile-up
+      Int_t   nPV_;       // number of reconsrtucted primary vertices
+      Float_t rho_;       // the rho variable
+
+      Int_t   nElectrons_;// number of electrons in the event
+
+      std::vector<Float_t> pt_;
+      std::vector<Int_t> charge_;
+      std::vector<Float_t> genPt_;
+      std::vector<Float_t> eSC_;
+      std::vector<Float_t> etaSC_;
+      std::vector<Float_t> phiSC_;
+      std::vector<Float_t> dEtaIn_;
+      std::vector<Float_t> dEtaSeed_;
+      std::vector<Float_t> dPhiIn_;
+      std::vector<Float_t> hOverE_;
+      std::vector<Float_t> full5x5_sigmaIetaIeta_;
+      std::vector<Float_t> isoChargedHadrons_;
+      std::vector<Float_t> isoNeutralHadrons_;
+      std::vector<Float_t> isoPhotons_;
+      std::vector<Float_t> isoChargedFromPU_;
+      std::vector<Float_t> relCombIsoWithEA_;
+      std::vector<Float_t> ooEmooP_;
+      std::vector<Float_t> d0_;
+      std::vector<Float_t> dz_;
+      std::vector<Int_t>   expectedMissingInnerHits_;
+      std::vector<Int_t>   passConversionVeto_;
+      std::vector<Int_t>   passVetoId_;
+      std::vector<Int_t>   passLooseId_;
+      std::vector<Int_t>   passMediumId_;
+      std::vector<Int_t>   passTightId_;
+      std::vector<Int_t>   passHEEPId_;
+      std::vector<Int_t>   isMatchTrue_;
+      EffectiveAreas   effectiveAreas_;
+      std::vector<Int_t> trgobj_idx_;
+      std::vector<Float_t> trgobj_ele_pt_;
+      std::vector<Float_t> trgobj_ele_eta_;
+      std::vector<Float_t> trgobj_ele_phi_;
+
+      std::vector<float> trgSingleElePt[64], trgSingleEleEta[64], trgSingleElePhi[64];
+
+};
+
+Run3Ntuplizer::Run3Ntuplizer(const edm::ParameterSet& iConfig):
+  eleVetoIdMapToken_(consumes<edm::ValueMap<bool> >  (iConfig.getParameter<edm::InputTag>("eleIdMap_Cut94V2_Veto"))),
+  eleLooseIdMapToken_(consumes<edm::ValueMap<bool> > (iConfig.getParameter<edm::InputTag>("eleIdMap_Cut94V2_Loose"))),
+  eleMediumIdMapToken_(consumes<edm::ValueMap<bool> >(iConfig.getParameter<edm::InputTag>("eleIdMap_Cut94V2_Medium"))),
+  eleTightIdMapToken_(consumes<edm::ValueMap<bool> > (iConfig.getParameter<edm::InputTag>("eleIdMap_Cut94V2_Tight"))),
+  eleHEEPIdMapToken_(consumes<edm::ValueMap<bool> >  (iConfig.getParameter<edm::InputTag>("eleIdMap_HEEPV71"))),
+  eleIdFullInfoMapToken_(consumes<edm::ValueMap<vid::CutFlowResult> >
+			       (iConfig.getParameter<edm::InputTag>("eleIdFullInfoMap"))),
+  verboseIdFlag_(iConfig.getParameter<bool>("eleIdVerbose")),
+  effectiveAreas_( (iConfig.getParameter<edm::FileInPath>("effAreasConfigFile")).fullPath() )
+{
+  // Prepare tokens for all input collections and objects
+  // For electrons, use the fact that pat::Electron can be cast into GsfElectron
+
+  doGenMatch_ = false;
+
+  if(iConfig.existsAs<edm::InputTag>("genParticles")) {
+       doGenMatch_ = true;
+       genParticlesToken_   = mayConsume<edm::View<reco::GenParticle>>(iConfig.getParameter<edm::InputTag>("genParticles"));
+       genEventInfoProduct_ = consumes<GenEventInfoProduct>         (iConfig.getParameter<edm::InputTag>("genEventInfoProduct"));
+       pileupToken_         = consumes<edm::View<PileupSummaryInfo>>(iConfig.getParameter<edm::InputTag>("pileup"));
+  }
+  rhoToken_              = consumes<double> (iConfig.getParameter<edm::InputTag>("rho"));
+  beamSpotToken_         = consumes<reco::BeamSpot> (iConfig.getParameter<edm::InputTag>("beamSpot"));
+  electronsToken_        = mayConsume<edm::View<reco::GsfElectron> > (iConfig.getParameter<edm::InputTag>("electrons"));
+  vtxToken_              = mayConsume<reco::VertexCollection> (iConfig.getParameter<edm::InputTag>("vertices"));
+  conversionsToken_      = mayConsume< reco::ConversionCollection> (iConfig.getParameter<edm::InputTag>("conversions"));
+  triggerResultsToken_   = consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("triggerResults"));
+  triggerObjectsToken_   = consumes<pat::TriggerObjectStandAloneCollection>(iConfig.getParameter<edm::InputTag>("triggerObjects"));
+  triggerPrescalesToken_ = consumes<pat::PackedTriggerPrescales>(iConfig.getParameter<edm::InputTag>("triggerPrescales"));
+  triggerIdentifiers_    = iConfig.getParameter<std::vector<std::string> >("triggerIdentifiers");
+  triggerLabelsName_     = iConfig.getParameter<std::vector<std::string> >("triggerLabelsName");
+
+  LoopNumber = 0;
+
+
+  // Set up the ntuple structure
+  edm::Service<TFileService> fs;
+  tree_ = fs->make<TTree> ("tree", "Tree");
+  tree_->Branch("run"                     , &run_   , "run/I"  );
+  tree_->Branch("lumis"                   , &lumis_ , "lumis/I");
+  tree_->Branch("event"                   , &event_ );
+  tree_->Branch("isData"                  , &isData_);
+  tree_->Branch("HLTMuX"                  , &HLTMuX_);
+  tree_->Branch("HLTMuXIsPrescaled"       , &HLTMuXIsPrescaled_);
+  tree_->Branch("HLTMETX"                 , &HLTMETX_);
+  tree_->Branch("HLTMETXIsPrescaled"      , &HLTMETXIsPrescaled_);
+  tree_->Branch("HLTEleX"                 , &HLTEleX_);
+  tree_->Branch("HLTEleXIsPrescaled"      , &HLTEleXIsPrescaled_);
+  tree_->Branch("isHLTEle27Pass_"         , &isHLTEle27Pass_); 
+  tree_->Branch("isHLTEle35Pass_"         , &isHLTEle35Pass_);  
+  tree_->Branch("isHLTEle115Pass_"        , &isHLTEle115Pass_); 
+  tree_->Branch("isHLTPho175Pass_"        , &isHLTPho175Pass_); 
+  tree_->Branch("isHLTPho200Pass_"        , &isHLTPho200Pass_); 
+  tree_->Branch("isHLTMuPass_"	          , &isHLTMuPass_);       
+  tree_->Branch("alltriggers_in_run_"     , &alltriggers_in_run_);
+  tree_->Branch("pvNTracks"               , &pvNTracks_ , "pvNTracks/I");
+  tree_->Branch("nPV"                     , &nPV_       , "nPV/I");
+  tree_->Branch("nPU"                     , &nPU_       , "nPU/I");
+  tree_->Branch("nPUTrue"                 , &nPUTrue_   , "nPUTrue/I");
+  tree_->Branch("rho"                     , &rho_       , "rho/F");
+  tree_->Branch("genWeight"               , &genWeight_ , "genWeight/F");
+  tree_->Branch("nEle"                    , &nElectrons_, "nEle/I");
+  tree_->Branch("pt"                      , &pt_    );
+  tree_->Branch("charge"                  , &charge_ );
+  tree_->Branch("genPt"                   , &genPt_    );
+  tree_->Branch("eSC"                     , &eSC_    );
+  tree_->Branch("etaSC"                   , &etaSC_ );
+  tree_->Branch("phiSC"                   , &phiSC_ );
+  tree_->Branch("dEtaIn"                  , &dEtaIn_);
+  tree_->Branch("dEtaSeed"                , &dEtaSeed_);
+  tree_->Branch("dPhiIn"                  , &dPhiIn_);
+  tree_->Branch("hOverE"                  , &hOverE_);
+  tree_->Branch("full5x5_sigmaIetaIeta"   , &full5x5_sigmaIetaIeta_);
+  tree_->Branch("isoChargedHadrons"       , &isoChargedHadrons_);
+  tree_->Branch("isoNeutralHadrons"       , &isoNeutralHadrons_);
+  tree_->Branch("isoPhotons"              , &isoPhotons_);
+  tree_->Branch("relCombIsoWithEA"        , &relCombIsoWithEA_);
+  tree_->Branch("isoChargedFromPU"        , &isoChargedFromPU_);
+  tree_->Branch("ooEmooP"                 , &ooEmooP_);
+  tree_->Branch("d0"                      , &d0_);
+  tree_->Branch("dz"                      , &dz_);
+  tree_->Branch("expectedMissingInnerHits", &expectedMissingInnerHits_);
+  tree_->Branch("passConversionVeto"      , &passConversionVeto_);
+  tree_->Branch("passVetoId"              , &passVetoId_);
+  tree_->Branch("passLooseId"             , &passLooseId_);
+  tree_->Branch("passMediumId"            , &passMediumId_);
+  tree_->Branch("passTightId"             , &passTightId_);
+  tree_->Branch("passHEEPId"              , &passHEEPId_);
+  tree_->Branch("isMatchTrue"             , &isMatchTrue_);
+  tree_->Branch("trgobj_idx_"             , &trgobj_idx_);
+  tree_->Branch("trgobj_ele_pt_"           , &trgobj_ele_pt_);
+  tree_->Branch("trgobj_ele_eta_"          , &trgobj_ele_eta_);
+  tree_->Branch("trgobj_ele_phi_"          , &trgobj_ele_phi_);
+}
+
+Run3Ntuplizer::~Run3Ntuplizer(){}
+
+
+// ------------ method called for each event  ------------
+void Run3Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup){
+  using namespace std;
+  using namespace edm;
+  using namespace reco;
+
+  LoopNumber++;
+
+  run_    = iEvent.id().run();
+  event_  = iEvent.id().event();
+  lumis_  = iEvent.luminosityBlock();
+  isData_ = iEvent.isRealData();
+
+  HLTMuX_             = 0;
+  HLTMuXIsPrescaled_  = 0;
+  HLTMETX_            = 0;
+  HLTMETXIsPrescaled_ = 0;
+  HLTEleX_            = 0;
+  HLTEleXIsPrescaled_ = 0;
+  HLTPhoX_            = 0;
+  HLTPhoXIsPrescaled_ = 0;
+
+  isHLTEle27Pass_  = 0 ; 
+  isHLTEle35Pass_  = 0 ; 
+  isHLTEle115Pass_ = 0 ; 
+  isHLTPho175Pass_ = 0 ; 
+  isHLTPho200Pass_ = 0 ; 
+  isHLTMuPass_     = 0 ;        
+
+  // Get the MC collection
+  edm::Handle<edm::View<reco::GenParticle> > genParticles;
+  if((!isData_ and doGenMatch_)){
+       iEvent.getByToken(genParticlesToken_,genParticles);
+  }
+  // Get gen weight info
+  edm::Handle< GenEventInfoProduct > genWeightH;
+  if((!isData_ and doGenMatch_)){
+       iEvent.getByToken(genEventInfoProduct_,genWeightH);
+       genWeight_ = genWeightH->GenEventInfoProduct::weight();
+  }
+  // Get Pileup info
+  Handle<edm::View<PileupSummaryInfo> > pileupHandle;
+  if((!isData_ and doGenMatch_)){
+       iEvent.getByToken(pileupToken_, pileupHandle);
+       for( auto & puInfoElement : *pileupHandle){
+          if( puInfoElement.getBunchCrossing() == 0 ){
+              nPU_    = puInfoElement.getPU_NumInteractions();
+              nPUTrue_= puInfoElement.getTrueNumInteractions();
+          }
+       }
+  }
+  // Get rho value
+  edm::Handle< double > rhoH;
+  iEvent.getByToken(rhoToken_,rhoH);
+  rho_ = *rhoH;
+
+  // Get the beam spot
+  edm::Handle<reco::BeamSpot> theBeamSpot;
+  iEvent.getByToken(beamSpotToken_,theBeamSpot);
+
+  // Get PV 
+  // NOTE FOR RUN 2 THE OLD SELECTION OF GOOD VERTICES BELOW IS DISCOURAGED
+  edm::Handle<reco::VertexCollection> vertices;
+  iEvent.getByToken(vtxToken_, vertices);
+  if (vertices->empty()) return; // skip the event if no PV found
+  nPV_    = vertices->size(); 
+  const reco::Vertex &pv = vertices->front();
+  pvNTracks_ = pv.nTracks();
+
+  // Get the conversions collection
+  edm::Handle<reco::ConversionCollection> conversions;
+  iEvent.getByToken(conversionsToken_, conversions);
+
+  // Get Electron
+  edm::Handle<edm::View<reco::GsfElectron> > electrons;
+  iEvent.getByToken(electronsToken_, electrons);
+  if( !electrons.isValid() ){
+      printf("Please Check ! : electrons is not Valid\n");
+  }
+  // Get the electron ID data from the event stream.
+  // Note: this implies that the VID ID modules have been run upstream.
+  edm::Handle<edm::ValueMap<bool> > veto_id_decisions;
+  edm::Handle<edm::ValueMap<bool> > loose_id_decisions;
+  edm::Handle<edm::ValueMap<bool> > medium_id_decisions;
+  edm::Handle<edm::ValueMap<bool> > tight_id_decisions; 
+  edm::Handle<edm::ValueMap<bool> > heep_id_decisions;
+
+  iEvent.getByToken(eleVetoIdMapToken_  , veto_id_decisions);
+  iEvent.getByToken(eleLooseIdMapToken_ , loose_id_decisions);
+  iEvent.getByToken(eleMediumIdMapToken_, medium_id_decisions);
+  iEvent.getByToken(eleTightIdMapToken_ , tight_id_decisions);
+  iEvent.getByToken(eleHEEPIdMapToken_  , heep_id_decisions);  
+
+  // Full cut flow info for one of the working points:
+  edm::Handle<edm::ValueMap<vid::CutFlowResult> > heep_id_cutflow_data;
+  iEvent.getByToken(eleIdFullInfoMapToken_,heep_id_cutflow_data);
+
+  nElectrons_ = 0;
+  pt_.clear();
+  charge_.clear();
+  genPt_.clear();
+  eSC_.clear();
+  etaSC_.clear();
+  phiSC_.clear();
+  dEtaIn_.clear();
+  dEtaSeed_.clear();
+  dPhiIn_.clear();
+  hOverE_.clear();
+  full5x5_sigmaIetaIeta_.clear();
+  isoChargedHadrons_.clear();
+  isoNeutralHadrons_.clear();
+  isoPhotons_.clear();
+  relCombIsoWithEA_.clear();
+  isoChargedFromPU_.clear();
+  ooEmooP_.clear();
+  d0_.clear();
+  dz_.clear();
+  expectedMissingInnerHits_.clear();
+  passConversionVeto_.clear();
+  passVetoId_.clear();
+  passLooseId_.clear();
+  passMediumId_.clear();
+  passTightId_.clear();
+  passHEEPId_.clear();
+  isMatchTrue_.clear();
+  trgobj_idx_.clear();
+  trgobj_ele_pt_.clear();
+  trgobj_ele_eta_.clear();
+  trgobj_ele_phi_.clear();
+
+
+  // Loop over electrons in the event
+  for (size_t i = 0; i < electrons->size(); ++i){
+    const auto el = electrons->ptrAt(i);
+
+    // Kinematics
+    if(el->pt() < 10) continue; // keep only electrons above 10 GeV
+    nElectrons_++;
+    pt_.push_back( el->pt() );
+    charge_.push_back( el->charge() );
+    eSC_.push_back( el->superCluster()->energy() );
+    etaSC_.push_back( el->superCluster()->eta() );
+    phiSC_.push_back( el->superCluster()->phi() );
+
+    // ID and matching
+    dEtaIn_.push_back( el->deltaEtaSuperClusterTrackAtVtx() );
+    // Calculation of dEtaSeed is taken from VID (by HEEP folks)
+    // https://github.com/cms-sw/cmssw/blob/CMSSW_8_1_X/RecoEgamma/ElectronIdentification/plugins/cuts/GsfEleDEtaInSeedCut.cc#L31-L32
+    if(el->superCluster().isNonnull() and el->superCluster()->seed().isNonnull()) {
+         dEtaSeed_.push_back(el->deltaEtaSuperClusterTrackAtVtx() - el->superCluster()->eta() + el->superCluster()->seed()->eta());
+    }else {
+         dEtaSeed_.push_back(std::numeric_limits<float>::max());
+    }
+    dPhiIn_.push_back( el->deltaPhiSuperClusterTrackAtVtx() );
+    hOverE_.push_back( el->hcalOverEcal() );
+    full5x5_sigmaIetaIeta_.push_back( el->full5x5_sigmaIetaIeta() );
+    // |1/E-1/p| = |1/E - EoverPinner/E| is computed below
+    // The if protects against ecalEnergy == inf or zero
+    // (always the case for miniAOD for electrons <5 GeV)
+    if( el->ecalEnergy() == 0 ){
+      printf("Electron energy is zero! => ooEmooP set to 1e30\n");
+      ooEmooP_.push_back( 1e30 );
+    }else if( !std::isfinite(el->ecalEnergy())){
+      printf("Electron energy is not finite! => ooEmooP set to 1e30\n");
+      ooEmooP_.push_back( 1e30 );
+    }else{
+      ooEmooP_.push_back( fabs(1.0/el->ecalEnergy() - el->eSuperClusterOverP()/el->ecalEnergy() ) );
+    }
+
+    // Isolation
+    GsfElectron::PflowIsolationVariables pfIso = el->pfIsolationVariables();
+    // Compute individual PF isolations
+    isoChargedHadrons_.push_back( pfIso.sumChargedHadronPt );
+    isoNeutralHadrons_.push_back( pfIso.sumNeutralHadronEt );
+    isoPhotons_.push_back( pfIso.sumPhotonEt );
+    isoChargedFromPU_.push_back( pfIso.sumPUPt );
+
+    // Compute combined relative PF isolation with the effective area correction for pile-up
+    float abseta =  abs(el->superCluster()->eta());
+    float eA = effectiveAreas_.getEffectiveArea(abseta);
+    relCombIsoWithEA_.push_back((pfIso.sumChargedHadronPt + std::max( 0.0f, pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - eA*rho_)) / el->pt() );
+
+    // Impact parameter
+    reco::GsfTrackRef theTrack = el->gsfTrack();
+    d0_.push_back( (-1) * theTrack->dxy(pv.position() ) );
+    dz_.push_back( theTrack->dz( pv.position() ) );
+
+    // Conversion rejection
+    expectedMissingInnerHits_.push_back(el->gsfTrack()->hitPattern().numberOfLostHits(reco::HitPattern::MISSING_INNER_HITS) );
+
+    bool passConvVeto = !ConversionTools::hasMatchedConversion(*el, *conversions, theBeamSpot->position());
+    passConversionVeto_.push_back( (int) passConvVeto );
+
+    // Look up and save the ID decisions
+    bool isPassVeto   = (*veto_id_decisions)[el];
+    bool isPassLoose  = (*loose_id_decisions)[el];
+    bool isPassMedium = (*medium_id_decisions)[el];
+    bool isPassTight  = (*tight_id_decisions)[el];
+    bool isPassHEEP   = (*heep_id_decisions)[el];
+
+    passVetoId_.push_back  ( (int)isPassVeto  );
+    passLooseId_.push_back ( (int)isPassLoose );
+    passMediumId_.push_back( (int)isPassMedium);
+    passTightId_.push_back ( (int)isPassTight );
+    passHEEPId_.push_back  ( (int)isPassHEEP );
+
+    // The full info for one ID
+    if( verboseIdFlag_  and LoopNumber < 5) {
+        vid::CutFlowResult fullCutFlowData = (*heep_id_cutflow_data)[el];
+        // Full printout
+        printf("\nDEBUG CutFlow, full info for candidate with pt=%f:\n", el->pt());
+        printCutFlowResult(fullCutFlowData);
+
+        // Example of how to find the ID decision with one cut removed,
+        // this could be needed for N-1 efficiency studies.
+        const int cutIndexToMask = 4; 
+        vid::CutFlowResult maskedCutFlowData = fullCutFlowData.getCutFlowResultMasking(cutIndexToMask);
+        printf("DEBUG CutFlow, the result with cut %s masked out\n", 
+        	     maskedCutFlowData.getNameAtIndex(cutIndexToMask).c_str());
+        printCutFlowResult(maskedCutFlowData);
+    }
+
+    // Save MC truth match
+    if(!isData_ and doGenMatch_){
+          float genPt = 0;
+          isMatchTrue_.push_back(matchToTruth( el, genParticles, genPt));
+          genPt_.push_back(genPt);
+    }
+  } // end loo electrons
+
+  // Get HLT info
+  edm::Handle<edm::TriggerResults> triggerResultsHandle;
+  iEvent.getByToken(triggerResultsToken_, triggerResultsHandle);
+//  HLTPrescaleProvider hltPrescaleProvider_;
+  string triggerResultsProcess_;
+
+  edm::Handle<pat::PackedTriggerPrescales> triggerPrescales;
+  iEvent.getByToken(triggerPrescalesToken_, triggerPrescales);
+
+  std::vector<std::string> triggers_in_run_;
+  triggers_in_run_.clear();
+//  bool cfg_changed = true;
+//  HLTPrescaleProvider hltPrescaleProvider_.init(iEvent.getRun(), iSetup, triggerResultsProcess_, cfg_changed);
+//
+//  HLTConfigProvider const&  hltCfg = hltPrescaleProvider_.hltConfigProvider();
+//  const int prescaleSet = hltPrescaleProvider_.prescaleSet(iEvent,iSetup);
+  const edm::TriggerNames &triggerNames = iEvent.triggerNames(*triggerResultsHandle);
+  if(LoopNumber < 5 ) std::cout << "\n == TRIGGER PATH = " << std::endl;
+
+  for (size_t i = 0; i < triggerNames.size(); ++i) {
+    const string &name = triggerNames.triggerName(i);
+    // HLT name => bit
+    int bitMuX  = -1;
+    int bitEleX = -1;
+    int bitPhoX = -1;
+    int bitMETX = -1;
+
+    if(LoopNumber < 5) {
+                    std::cout << "Trigger " << triggerNames.triggerName(i) <<
+                    ", prescale " << triggerPrescales->getPrescaleForIndex(i) <<
+                    ": " << (triggerResultsHandle->accept(i) ? "PASS" : "fail (or not run)") << std::endl;
+    }
+
+    // Single Mu triggers
+    if (name.find("HLT_Mu8_TrkIsoVVL_v")			!= string::npos) bitMuX = 0 ;
+    else if (name.find("HLT_Mu8_v")				!= string::npos) bitMuX = 1 ;	   
+    else if (name.find("HLT_Mu12_IP6_v")			!= string::npos) bitMuX = 2 ;	   
+    else if (name.find("HLT_Mu15_v")				!= string::npos) bitMuX = 3 ;	   
+    else if (name.find("HLT_Mu17_TrkIsoVVL_v")			!= string::npos) bitMuX = 4 ;
+    else if (name.find("HLT_Mu17_v")				!= string::npos) bitMuX = 5 ;	
+    else if (name.find("HLT_Mu19_TrkIsoVVL_v")			!= string::npos) bitMuX = 6 ;  
+    else if (name.find("HLT_Mu19_v")				!= string::npos) bitMuX = 7 ; 	
+    else if (name.find("HLT_Mu20_v")				!= string::npos) bitMuX = 8 ; 	
+    else if (name.find("HLT_Mu27_v")				!= string::npos) bitMuX = 9 ; 	
+    else if (name.find("HLT_Mu50_v")				!= string::npos) bitMuX = 10 ;	
+    else if (name.find("HLT_Mu55_v")				!= string::npos) bitMuX = 11 ;	
+    else if (name.find("HLT_IsoMu20_v")				!= string::npos) bitMuX = 12 ;	
+    else if (name.find("HLT_IsoMu24_eta2p1_v")			!= string::npos) bitMuX = 13 ; 
+    else if (name.find("HLT_IsoMu24_v")				!= string::npos) bitMuX = 14 ;	  
+    else if (name.find("HLT_IsoMu27_v")				!= string::npos) bitMuX = 15 ;	  
+    else if (name.find("HLT_HighPtTkMu100_v")			!= string::npos) bitMuX = 16 ;
+    else if (name.find("HLT_TkMu100_v")				!= string::npos) bitMuX = 17 ;	 //only mc 
+    else if (name.find("HLT_OldMu100_v")			!= string::npos) bitMuX = 18 ;	 //only mc 
+
+    // Single Ele //, Ele + Jet, MultiEles triggers
+    if (name.find("HLT_Ele15_WPLoose_Gsf_v")                    != string::npos) bitEleX = 0 ; 
+    else if (name.find("HLT_Ele17_WPLoose_Gsf_v")               != string::npos) bitEleX = 1 ; 
+    else if (name.find("HLT_Ele20_WPLoose_Gsf_v")               != string::npos) bitEleX = 2 ;  
+    else if (name.find("HLT_Ele20_eta2p1_WPLoose_Gsf_v")        != string::npos) bitEleX = 3 ;  
+    else if (name.find("HLT_Ele20_WPTight_Gsf_v")               != string::npos) bitEleX = 4 ;  
+    else if (name.find("HLT_Ele27_WPTight_Gsf_v")               != string::npos) bitEleX = 5 ;  
+    else if (name.find("HLT_Ele28_WPTight_Gsf_v")               != string::npos) bitEleX = 6 ;  
+    else if (name.find("HLT_Ele30_WPTight_Gsf_v")               != string::npos) bitEleX = 7 ;  
+    else if (name.find("HLT_Ele32_WPTight_Gsf_v")               != string::npos) bitEleX = 8 ;  
+    else if (name.find("HLT_Ele35_WPTight_Gsf_v")               != string::npos) bitEleX = 9 ;  
+    else if (name.find("HLT_Ele35_WPTight_Gsf_L1EGMT_v")        != string::npos) bitEleX = 10 ; 
+    else if (name.find("HLT_Ele38_WPTight_Gsf_v")               != string::npos) bitEleX = 11 ; 
+    else if (name.find("HLT_Ele40_WPTight_Gsf_v")               != string::npos) bitEleX = 12 ; 
+    else if (name.find("HLT_Ele115_CaloIdVT_GsfTrkIdT_v")       != string::npos) bitEleX = 13 ; 
+    else if (name.find("HLT_Ele135_CaloIdVT_GsfTrkIdT_v")       != string::npos) bitEleX = 14 ;  
+    else if (name.find("HLT_ECALHT800_v")                       != string::npos) bitEleX = 15 ;  
+
+    // Single Photon triggers
+    if (name.find("HLT_Photon50_v")				!= string::npos) bitPhoX = 0 ;
+    else if (name.find("HLT_Photon75_v")			!= string::npos) bitPhoX = 1 ;	
+    else if (name.find("HLT_Photon90_v")			!= string::npos) bitPhoX = 2 ;	
+    else if (name.find("HLT_Photon120_v")			!= string::npos) bitPhoX = 3 ;	
+    else if (name.find("HLT_Photon150_v")			!= string::npos) bitPhoX = 4 ;	
+    else if (name.find("HLT_Photon175_v")			!= string::npos) bitPhoX = 5 ;  
+    else if (name.find("HLT_Photon200_v")			!= string::npos) bitPhoX = 6 ;	
+    else if (name.find("HLT_Photon300_NoHE_v")			!= string::npos) bitPhoX = 7 ;
+
+    // MET triggers
+    if (name.find("HLT_CaloMET80_NotCleaned_v")					!= string::npos) bitMETX = 0;
+    else if (name.find("HLT_CaloMET100_NotCleaned_v")				!= string::npos) bitMETX = 1;				
+    else if (name.find("HLT_CaloMET250_NotCleaned_v")				!= string::npos) bitMETX = 2;				
+    else if (name.find("HLT_CaloMET300_NotCleaned_v")				!= string::npos) bitMETX = 3;				
+    else if (name.find("HLT_CaloMET350_NotCleaned_v")				!= string::npos) bitMETX = 4;				
+    else if (name.find("HLT_MET105_IsoTrk50_v")					!= string::npos) bitMETX = 5;				
+    else if (name.find("HLT_MET120_IsoTrk50_v")					!= string::npos) bitMETX = 6;				
+    else if (name.find("HLT_PFMET100_PFMHT100_IDTight_PFHT60_v")		!= string::npos) bitMETX = 7;		
+    else if (name.find("HLT_PFMET105_IsoTrk50_v")				!= string::npos) bitMETX = 8;				
+    else if (name.find("HLT_PFMET110_PFMHT110_IDTight_v")			!= string::npos) bitMETX = 9;			
+    else if (name.find("HLT_PFMET120_PFMHT120_IDTight_PFHT60_v")		!= string::npos) bitMETX = 10;		
+    else if (name.find("HLT_PFMET120_PFMHT120_IDTight_v")			!= string::npos) bitMETX = 11;			
+    else if (name.find("HLT_PFMET130_PFMHT130_IDTight_v")			!= string::npos) bitMETX = 12;			
+    else if (name.find("HLT_PFMET140_PFMHT140_IDTight_v")			!= string::npos) bitMETX = 13;			
+    else if (name.find("HLT_PFMET200_BeamHaloCleaned_v")			!= string::npos) bitMETX = 14;			
+    else if (name.find("HLT_PFMET200_NotCleaned_v")				!= string::npos) bitMETX = 15;			
+    else if (name.find("HLT_PFMET250_NotCleaned_v")				!= string::npos) bitMETX = 16;					
+    else if (name.find("HLT_PFMET300_NotCleaned_v")				!= string::npos) bitMETX = 17;				
+    else if (name.find("HLT_PFMETNoMu100_PFMHTNoMu100_IDTight_PFHT60_v")	!= string::npos) bitMETX = 18;	
+    else if (name.find("HLT_PFMETNoMu110_PFMHTNoMu110_IDTight_FilterHF_v")	!= string::npos) bitMETX = 19;	
+    else if (name.find("HLT_PFMETNoMu110_PFMHTNoMu110_IDTight_v")		!= string::npos) bitMETX = 20;		
+    else if (name.find("HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_FilterHF_v")	!= string::npos) bitMETX = 21;	
+    else if (name.find("HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_PFHT60_v")	!= string::npos) bitMETX = 22;	
+    else if (name.find("HLT_PFMETNoMu120_PFMHTNoMu120_IDTight_v")		!= string::npos) bitMETX = 23;		
+    else if (name.find("HLT_PFMETNoMu130_PFMHTNoMu130_IDTight_FilterHF_v")	!= string::npos) bitMETX = 24;	
+    else if (name.find("HLT_PFMETNoMu130_PFMHTNoMu130_IDTight_v")		!= string::npos) bitMETX = 25;		
+    else if (name.find("HLT_PFMETNoMu140_PFMHTNoMu140_IDTight_FilterHF_v")	!= string::npos) bitMETX = 26;	
+    else if (name.find("HLT_PFMETNoMu140_PFMHTNoMu140_IDTight_v")		!= string::npos) bitMETX = 27;		
+    else if (name.find("HLT_PFMETTypeOne100_PFMHT100_IDTight_PFHT60_v")		!= string::npos) bitMETX = 28;	
+    else if (name.find("HLT_PFMETTypeOne110_PFMHT110_IDTight_v")		!= string::npos) bitMETX = 29;		
+    else if (name.find("HLT_PFMETTypeOne120_PFMHT120_IDTight_PFHT60_v")		!= string::npos) bitMETX = 30;	
+    else if (name.find("HLT_PFMETTypeOne120_PFMHT120_IDTight_v")		!= string::npos) bitMETX = 31;		
+    else if (name.find("HLT_PFMETTypeOne130_PFMHT130_IDTight_v")		!= string::npos) bitMETX = 32;		
+    else if (name.find("HLT_PFMETTypeOne140_PFMHT140_IDTight_v")		!= string::npos) bitMETX = 33;		
+    else if (name.find("HLT_PFMETTypeOne200_BeamHaloCleaned_v")			!= string::npos) bitMETX = 34;		
+
+    if (bitMuX == 5)  {  isHLTMuPass_     = (triggerResultsHandle->accept(i)); } 
+    if (bitMuX == 7)  {  isHLTMuPass_     = (triggerResultsHandle->accept(i)); } 
+    if (bitMuX == 8)  {  isHLTMuPass_     = (triggerResultsHandle->accept(i)); }   
+    if (bitMuX == 9)  {  isHLTMuPass_     = (triggerResultsHandle->accept(i)); }   
+    if (bitMuX == 14) {  isHLTMuPass_     = (triggerResultsHandle->accept(i)); } 
+    if (bitMuX == 15) {  isHLTMuPass_     = (triggerResultsHandle->accept(i)); } 
+    if (bitEleX == 5) {  isHLTEle27Pass_  = (triggerResultsHandle->accept(i)); } 
+    if (bitEleX == 9) {  isHLTEle35Pass_  = (triggerResultsHandle->accept(i)); }
+    if (bitEleX == 13){  isHLTEle115Pass_ = (triggerResultsHandle->accept(i)); } 
+    if (bitPhoX == 5) {  isHLTPho175Pass_ = (triggerResultsHandle->accept(i)); }	
+    if (bitPhoX == 6) {  isHLTPho200Pass_ = (triggerResultsHandle->accept(i)); }
+
+    size_t found1 = name.find("HLT_Ele27_WPTight_Gsf_v");
+    size_t found2 = name.find("HLT_Ele35_WPTight_Gsf_v");
+    size_t found3 = name.find("HLT_Ele115_CaloIdVT_GsfTrkIdT_v");
+    size_t found4 = name.find("HLT_Ele135_CaloIdVT_GsfTrkIdT_v");
+    size_t found5 = name.find("HLT_Photon175_v");
+    size_t found6 = name.find("HLT_Photon200_v");
+    size_t found7 = name.find("HLT_Photon300_NoHE_v");
+
+    if(found1!=string::npos || found2!=string::npos || found3!=string::npos || found4!=string::npos || found5!=string::npos || found6!=string::npos || found7!=string::npos){
+      triggers_in_run_.push_back(name);
+    }
+    
+    // indicates prescaling and whether trigger was fired or not
+//    ULong64_t isPrescaled = (hltCfg.prescaleValue(prescaleSet, name)!=1) ? 1 : 0;
+    ULong64_t isPrescaled = (triggerPrescales->getPrescaleForIndex(i) !=1 ) ? 1 : 0 ; 
+    ULong64_t isFired     = (triggerResultsHandle->accept(i)) ? 1 : 0;
+////    ULong64_t isrejectedByHLTPS = (hltCfg.moduleType(hltCfg.moduleLabel(i,triggerResultsHandle->index(i)))=="HLTPrescaler") ? 1: 0;
+
+    if (bitMuX >= 0) {
+      HLTMuX_            |= (isFired << bitMuX);
+      HLTMuXIsPrescaled_ |= (isPrescaled << bitMuX);
+    }
+    if (bitEleX >= 0) {
+      HLTEleX_            |= (isFired << bitEleX);
+      HLTEleXIsPrescaled_ |= (isPrescaled << bitEleX);
+    }
+    if (bitPhoX >= 0) {
+      HLTPhoX_            |= (isFired << bitPhoX);
+      HLTPhoXIsPrescaled_ |= (isPrescaled << bitPhoX);
+    }
+    if (bitMETX >= 0) {
+      HLTMETX_            |= (isFired << bitMETX);
+      HLTMETXIsPrescaled_ |= (isPrescaled << bitMETX);
+    }
+
+  } // triggername  loop end
+
+  alltriggers_in_run_.clear();
+
+  for(int x = 0; x< (int)triggers_in_run_.size(); x++){
+    bool found = false;
+    for(int i = 0; i< (int)all_triggers.size(); i++){
+      if(all_triggers[i]==triggers_in_run_[x]) found = true;
+    }//loop all triggers
+
+     if(!found)
+       all_triggers.push_back(photon_triggers_in_run[x]);
+   }//loop photon triggers
+
+
+  //for (size_t i = 0; i < 64; ++i) {
+  //  trgSingleElePt [i].clear();
+  //  trgSingleEleEta[i].clear();
+  //  trgSingleElePhi[i].clear();
+  //}
+  static std::map<string,size_t> eleSingleFilters;
+
+  double trgobj_ele_pt; 
+  double trgobj_ele_eta; 
+  double trgobj_ele_phi; 
+
+  if (eleSingleFilters.size() == 0) {
+    eleSingleFilters["hltEle15WPLooseGsfTrackIsoFilter"]           = 0;         
+    eleSingleFilters["hltEle20WPLooseGsfTrackIsoFilter"]           = 1;         
+    eleSingleFilters["hltEle27WPTightGsfTrackIsoFilter"]           = 2;         
+    eleSingleFilters["hltEle28WPTightGsfTrackIsoFilter"]           = 3;         
+    eleSingleFilters["hltEle30WPTightGsfTrackIsoFilter"]           = 4; 
+    eleSingleFilters["hltEle32WPTightGsfTrackIsoFilter"]           = 5; 
+    eleSingleFilters["hltEle35WPTightGsfTrackIsoFilter"]           = 6; 
+    eleSingleFilters["hltEle38WPTightGsfTrackIsoFilter"]           = 7; 
+    eleSingleFilters["hltEle40WPTightGsfTrackIsoFilter"]           = 8; 
+    eleSingleFilters["hltEle115CaloIdVTGsfTrkIdTGsfDphiFilter"]    = 9;        
+    eleSingleFilters["hltEle135CaloIdVTGsfTrkIdTGsfDphiFilter"]    = 10;
+  }
+ 
+  edm::Handle<pat::TriggerObjectStandAloneCollection> triggerObjectsHandle;
+  iEvent.getByToken(triggerObjectsToken_, triggerObjectsHandle);
+
+  edm::Handle<std::string> filterLabels_;
+  iEvent.getByLabel("slimmedPatTrigger:filterLabels", filterLabels_);
+
+  trgobj_ele_pt  = -99; 
+  trgobj_ele_eta = -99; 
+  trgobj_ele_phi = -99; 
+
+  for (pat::TriggerObjectStandAlone obj : *triggerObjectsHandle) {
+    obj.unpackFilterLabels(iEvent, *triggerResultsHandle);
+    for (size_t iF = 0; iF < obj.filterLabels().size(); ++iF) {
+      string label = obj.filterLabels()[iF];
+      std::map<string,size_t>::iterator idxEleSingle = eleSingleFilters.find(label);
+
+      if (idxEleSingle != eleSingleFilters.end()) {
+        //size_t idx = idxEleSingle->second;
+        //trgSingleElePt [idx].push_back(obj.pt());
+        //trgSingleEleEta[idx].push_back(obj.eta());
+        //trgSingleElePhi[idx].push_back(obj.phi());
+	trgobj_ele_pt  = obj.pt() ;
+	trgobj_ele_eta = obj.eta() ;
+	trgobj_ele_phi = obj.phi() ;
+      }
+    }
+  }
+  if(trgobj_ele_pt > 0) trgobj_idx_.push_back(LoopNumber);
+  trgobj_ele_pt_.push_back(trgobj_ele_pt);
+  trgobj_ele_eta_.push_back(trgobj_ele_eta);
+  trgobj_ele_phi_.push_back(trgobj_ele_phi);
+
+
+  // Save info
+  tree_->Fill();
+}
+
+void
+Run3Ntuplizer::beginJob(){}
+
+void
+Run3Ntuplizer::endJob(){}
+
+void
+Run3Ntuplizer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  //The following says we do not know what parameters are allowed so do no validation
+  // Please change this to state exactly what you do use, even if it is no parameters
+  edm::ParameterSetDescription desc;
+  desc.setUnknown();
+  descriptions.addDefault(desc);
+}
+  
+int Run3Ntuplizer::matchToTruth(const edm::Ptr<reco::GsfElectron> el,
+	  const edm::Handle<edm::View<reco::GenParticle>> &prunedGenParticles, float &genPt){
+  // Explicit loop and geometric matching method (advised by Josh Bendavid)
+  // Find the closest status 1 gen electron to the reco electron
+  double dR = 999;
+  const reco::Candidate *closestElectron = 0;
+  for(size_t i=0; i<prunedGenParticles->size();i++){
+    const reco::Candidate *particle = &(*prunedGenParticles)[i];
+    // Drop everything that is not electron or not status 1
+    if( abs(particle->pdgId()) != 11 || particle->status() != 1 )
+      continue;
+    double dRtmp = ROOT::Math::VectorUtil::DeltaR( el->p4(), particle->p4() );
+    if( dRtmp < dR ){
+      dR = dRtmp;
+      closestElectron = particle;
+    }
+  }
+  // See if the closest electron (if it exists) is close enough.
+  // If not, no match found.
+
+  if( !(closestElectron != 0 && dR < 0.1) ) {
+    return UNMATCHED;
+  }
+
+  genPt = closestElectron->pt();
+  int ancestorPID = -999;
+  int ancestorStatus = -999;
+  findFirstNonElectronMother(closestElectron, ancestorPID, ancestorStatus);
+
+  if( ancestorPID == -999 && ancestorStatus == -999 ){
+    // No non-electron parent??? This should never happen.
+    // Print out the complain.
+    printf("Run3Ntuplizer: ERROR! Electron does not apper to have a non-electron parent\n");
+    return UNMATCHED;
+  }
+
+  if( abs(ancestorPID) > 50 && ancestorStatus == 2)  return TRUE_NON_PROMPT_ELECTRON;
+  if( abs(ancestorPID) == 15 && ancestorStatus == 2) return TRUE_ELECTRON_FROM_TAU;
+
+  // What remains is true prompt electrons
+  return TRUE_PROMPT_ELECTRON;
+}
+
+void Run3Ntuplizer::findFirstNonElectronMother(const reco::Candidate *particle, int &ancestorPID, int &ancestorStatus){
+
+  if( particle == 0 ){
+    printf("Run3Ntuplizer: ERROR! null candidate pointer, this should never happen\n");
+    return;
+  }
+
+  // Is this the first non-electron parent? If yes, return, otherwise
+  // go deeper into recursion
+  if( abs(particle->pdgId()) == 11 ){
+    findFirstNonElectronMother(particle->mother(0), ancestorPID, ancestorStatus);
+  }else{
+    ancestorPID = particle->pdgId();
+    ancestorStatus = particle->status();
+  }
+
+  return;
+}
+
+void Run3Ntuplizer::printCutFlowResult(vid::CutFlowResult &cutflow){
+
+  printf("    CutFlow name= %s    decision is %d\n", 
+	 cutflow.cutFlowName().c_str(),
+	 (int) cutflow.cutFlowPassed());
+  int ncuts = cutflow.cutFlowSize();
+  printf(" Index                               cut name              isMasked    value-cut-upon     pass?\n");
+  for(int icut = 0; icut<ncuts; icut++){
+    printf("  %2d      %50s    %d        %f          %d\n", icut,
+	   cutflow.getNameAtIndex(icut).c_str(),
+	   (int)cutflow.isCutMasked(icut),
+	   cutflow.getValueCutUpon(icut),
+	   (int)cutflow.getCutResultByIndex(icut));
+  }
+  
+}
+
+//define this as a plug-in
+DEFINE_FWK_MODULE(Run3Ntuplizer);
