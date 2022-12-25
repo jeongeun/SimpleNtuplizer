@@ -80,10 +80,14 @@ class Run3Ntuplizer : public edm::EDAnalyzer {
 
       static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
-      enum ElectronMatchType {UNMATCHED = 0,
-                              TRUE_PROMPT_ELECTRON,
-                              TRUE_ELECTRON_FROM_TAU,
-                              TRUE_NON_PROMPT_ELECTRON}; // The last does not include tau parents
+      enum ElectronMatchType {UNMATCHED = 0,            // 0; unmatched 
+                              TRUE_PROMPT_ELECTRON,     // 1; prompt electron
+                              TRUE_ELECTRON_FROM_TAU,   // 2; electron from prompt tau
+                              TRUE_NON_PROMPT_ELECTRON, // 3; The non_prompt_electron include tau parents
+                              TRUE_ELECTRON_FROM_C,     // 4; electron from c 
+                              TRUE_ELECTRON_FROM_B,     // 5; electron from b
+                              TRUE_PROMPT_PHOTON        // 6; prompt photon (likely conversion)
+                             };
    private:
       virtual void beginJob() override;
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
@@ -190,6 +194,7 @@ class Run3Ntuplizer : public edm::EDAnalyzer {
       std::vector<Int_t>   Ele_passTightId_;
       std::vector<Int_t>   Ele_passHEEPId_;
       std::vector<Int_t>   Ele_isMatchTrue_;
+      std::vector<Int_t>   Ele_genPartFlav_;
       EffectiveAreas       effectiveAreas_;
 
       // MET variables
@@ -352,6 +357,7 @@ Run3Ntuplizer::Run3Ntuplizer(const edm::ParameterSet& iConfig):
      tree_->Branch("Ele_passTightId"             , &Ele_passTightId_);
      tree_->Branch("Ele_passHEEPId"              , &Ele_passHEEPId_);
      tree_->Branch("Ele_isMatchTrue"             , &Ele_isMatchTrue_);
+     tree_->Branch("Ele_genPartFlav"             , &Ele_genPartFlav_);
      tree_->Branch("genMET"                      , &genMET_);
      tree_->Branch("genMET_Phi"                  , &genMET_Phi_);
      tree_->Branch("genMET_SumEt"                , &genMET_SumEt_);
@@ -527,6 +533,7 @@ void Run3Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   Ele_passTightId_.clear();
   Ele_passHEEPId_.clear();
   Ele_isMatchTrue_.clear();
+  Ele_genPartFlav_.clear();
   trgobj_idx_.clear();
   trgobj_ele_pt_.clear();
   trgobj_ele_eta_.clear();
@@ -673,7 +680,17 @@ void Run3Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     // Save MC truth match
     if(!isData_ and doGenMatch_){
           float genPt = 0;
-          Ele_isMatchTrue_.push_back(matchToTruth( el, genParticles, genPt));
+          Ele_genPartFlav_.push_back(matchToTruth( el, genParticles, genPt));
+          // 0; unmatched 
+          // 1; prompt electron
+          // 2; electron from prompt tau
+          // 3; The non_prompt_electron include tau parents
+          // 4; electron from c 
+          // 5; electron from b
+          // 6; prompt photon (likely conversion)
+
+          int ismatch = ( matchToTruth( el, genParticles, genPt) == 1 ) ? 1 : 0 ;
+          Ele_isMatchTrue_.push_back(ismatch);
           Ele_genPt_.push_back(genPt);
     }
   } // end electrons loop
@@ -1063,9 +1080,17 @@ int Run3Ntuplizer::matchToTruth(const edm::Ptr<reco::GsfElectron> el,
 
   if( abs(ancestorPID) > 50 && ancestorStatus == 2)  return TRUE_NON_PROMPT_ELECTRON;
   if( abs(ancestorPID) == 15 && ancestorStatus == 2) return TRUE_ELECTRON_FROM_TAU;
+  if( (abs(ancestorPID) == 4 || abs(ancestorPID) / 100 == 4 || abs(ancestorPID) / 1000 == 4  ) && ancestorStatus == 2)   return TRUE_ELECTRON_FROM_C; // 4; electron from c
+  if( (abs(ancestorPID) == 5 || abs(ancestorPID) / 100 == 5 || abs(ancestorPID) / 1000 == 5  ) && ancestorStatus == 2)   return TRUE_ELECTRON_FROM_B; // 5; electron from b
+  if( abs(ancestorPID) == 22 && ancestorStatus == 1)   return TRUE_PROMPT_PHOTON;   // 6; prompt photon (likely conversion)
 
   // What remains is true prompt electrons
   return TRUE_PROMPT_ELECTRON;
+
+
+
+
+
 }
 
 void Run3Ntuplizer::findFirstNonElectronMother(const reco::Candidate *particle, int &ancestorPID, int &ancestorStatus){
