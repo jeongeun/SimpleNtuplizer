@@ -140,8 +140,9 @@ class Run3Ntuplizer : public edm::EDAnalyzer {
       Int_t   nPUTrue_;   // true pile-up
       Int_t   nPU_;       // generated pile-up
       Int_t   nPV_;       // number of reconsrtucted primary vertices
+      Int_t   nVtx_;       
       Int_t   nGoodVtx_;       
-      Bool_t  isPVGood_;       
+      Bool_t   isPVGood_;       
       Float_t vtx_;
       Float_t vty_;
       Float_t vtz_;
@@ -305,8 +306,9 @@ Run3Ntuplizer::Run3Ntuplizer(const edm::ParameterSet& iConfig):
      tree_->Branch("nPV"                         , &nPV_       , "nPV/I"      );
      tree_->Branch("nPU"                         , &nPU_       , "nPU/I"      );
      tree_->Branch("nPUTrue"                     , &nPUTrue_   , "nPUTrue/I"  );
+     tree_->Branch("nVtx"                        , &nVtx_      , "nVtx/I" );    
      tree_->Branch("nGoodVtx"                    , &nGoodVtx_  , "nGoodVtx/I" );    
-     tree_->Branch("isPVGood"                    , &isPVGood_  , "isPVGood"   );    
+     tree_->Branch("isPVGood"                    , &isPVGood_  );    
      tree_->Branch("vtx"                         , &vtx_       , "vtx/F"      );
      tree_->Branch("vty"                         , &vty_       , "vty/F"      );
      tree_->Branch("vtz"                         , &vtz_       , "vtz/F"      );
@@ -451,21 +453,25 @@ void Run3Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
   edm::Handle<reco::VertexCollection> vertices;
   iEvent.getByToken(vtxToken_, vertices);                // Get vertex
-  if (vertices->empty()) return; // skip the event if no vertex found
-  nPV_    = vertices->size(); 
+  if (!vertices.isValid()) return; // skip the event if no vertex found
+  nVtx_     = 0; 
   nGoodVtx_ = 0;
+  nPV_      = vertices->size(); 
   const reco::Vertex &pv = vertices->front();
   pvNTracks_ = pv.nTracks();
 
   for (vector<reco::Vertex>::const_iterator v = vertices->begin(); v != vertices->end(); ++v) {
-      vtx_ = v->x();
-      vty_ = v->y();
-      vtz_ = v->z();
-      isPVGood_ = false;
-      if (!v->isFake() && v->ndof() > 4. && fabs(v->z()) <= 24. && fabs(v->position().rho()) <= 2.) {
-           isPVGood_ = true;
-           nGoodVtx_++; // count num of good vertex in the event
-      }
+
+      if (nVtx_ == 0) { //check only the first vertex = primary vertex
+          vtx_ = v->x();
+          vty_ = v->y();
+          vtz_ = v->z();
+          isPVGood_ = false;
+          if (!v->isFake() && v->ndof() > 4. && fabs(v->z()) <= 24. && fabs(v->position().rho()) <= 2.) isPVGood_ = true;
+      }//primary vertex check done.
+
+      if (!v->isFake() && v->ndof() > 4. && fabs(v->z()) <= 24. && fabs(v->position().rho()) <= 2.) nGoodVtx_++; // count num of good vertex in the event
+      nVtx_++; // check all vertices
   }
 
   edm::Handle<reco::ConversionCollection> conversions;
@@ -681,14 +687,14 @@ void Run3Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     if(!isData_ and doGenMatch_){
           float genPt = 0;
           Ele_genPartFlav_.push_back(matchToTruth( el, genParticles, genPt));
-          // 0; unmatched 
-          // 1; prompt electron
-          // 2; electron from prompt tau
-          // 3; The non_prompt_electron include tau parents
-          // 4; electron from c 
-          // 5; electron from b
-          // 6; prompt photon (likely conversion)
-
+          //cout << " Ele_genPartFlav " << matchToTruth( el, genParticles, genPt) << " , Ele_genPt " << genPt << endl;
+          //if( matchToTruth( el, genParticles, genPt) == 0 ) cout << "---> 0; unmatched                                  " << endl;
+          //if( matchToTruth( el, genParticles, genPt) == 1 ) cout << "---> 1; prompt electron                            " << endl;
+          //if( matchToTruth( el, genParticles, genPt) == 2 ) cout << "---> 2; electron from prompt tau                   " << endl;
+          //if( matchToTruth( el, genParticles, genPt) == 3 ) cout << "---> 3; The non_prompt_electron include tau parents" << endl;
+          //if( matchToTruth( el, genParticles, genPt) == 4 ) cout << "---> 4; electron from c                            " << endl;
+          //if( matchToTruth( el, genParticles, genPt) == 5 ) cout << "---> 5; electron from b                            " << endl;
+          //if( matchToTruth( el, genParticles, genPt) == 6 ) cout << "---> 6; prompt photon (likely conversion)          " << endl;
           int ismatch = ( matchToTruth( el, genParticles, genPt) == 1 ) ? 1 : 0 ;
           Ele_isMatchTrue_.push_back(ismatch);
           Ele_genPt_.push_back(genPt);
@@ -762,7 +768,7 @@ void Run3Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   istrgMatchTrue_.clear();
   int Nprint = 5;
 
-  if(LoopNumber < Nprint ) cout << "\n == TRIGGER PATH = " << endl;
+//  if(LoopNumber < Nprint ) cout << "\n == TRIGGER PATH = " << endl;
 
   edm::Handle<edm::TriggerResults> triggerResultsHandle;
   iEvent.getByToken(triggerResultsToken_, triggerResultsHandle);
@@ -779,10 +785,10 @@ void Run3Ntuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     int bitPhoX = -1;
     int bitMETX = -1;
 
-    if(LoopNumber < Nprint) { 
-        cout << "Trigger " << triggerNames.triggerName(i) <<", prescale " << triggerPrescales->getPrescaleForIndex(i) 
-             << ": " << (triggerResultsHandle->accept(i) ? "PASS" : "fail (or not run)") << endl;
-    }
+//    if(LoopNumber < Nprint) { 
+//        cout << "Trigger " << triggerNames.triggerName(i) <<", prescale " << triggerPrescales->getPrescaleForIndex(i) 
+//             << ": " << (triggerResultsHandle->accept(i) ? "PASS" : "fail (or not run)") << endl;
+//    }
     if(triggerResultsHandle->accept(i)) { string pathName = triggerNames.triggerName(i);}
 
     // Single Mu triggers
@@ -1075,21 +1081,32 @@ int Run3Ntuplizer::matchToTruth(const edm::Ptr<reco::GsfElectron> el,
     // No non-electron parent??? This should never happen.
     // Print out the complain.
     printf("Run3Ntuplizer: ERROR! Electron does not apper to have a non-electron parent\n");
-    return UNMATCHED;
+    return UNMATCHED; // 0
   }
 
-  if( abs(ancestorPID) > 50 && ancestorStatus == 2)  return TRUE_NON_PROMPT_ELECTRON;
-  if( abs(ancestorPID) == 15 && ancestorStatus == 2) return TRUE_ELECTRON_FROM_TAU;
-  if( (abs(ancestorPID) == 4 || abs(ancestorPID) / 100 == 4 || abs(ancestorPID) / 1000 == 4  ) && ancestorStatus == 2)   return TRUE_ELECTRON_FROM_C; // 4; electron from c
-  if( (abs(ancestorPID) == 5 || abs(ancestorPID) / 100 == 5 || abs(ancestorPID) / 1000 == 5  ) && ancestorStatus == 2)   return TRUE_ELECTRON_FROM_B; // 5; electron from b
-  if( abs(ancestorPID) == 22 && ancestorStatus == 1)   return TRUE_PROMPT_PHOTON;   // 6; prompt photon (likely conversion)
+//  (LOG) https://github.com/cms-sw/cmssw/blob/master/DataFormats/HepMCCandidate/interface/GenStatusFlags.h
+//  isPrompt() 	 			//is particle prompt (not from hadron, muon, or tau decay)
+//  isDecayedLeptonHadron()  		//is particle a decayed hadron, muon, or tau (does not include resonance decays like W,Z,Higgs,top,etc)
+//  isTauDecayProduct()  		//this particle is a direct or indirect tau decay product
+//  isPromptTauDecayProduct()  		//this particle is a direct or indirect decay product of a prompt tau
+//  isDirectTauDecayProduct() 		//this particle is a direct tau decay product
+//  isDirectPromptTauDecayProduct() 	//this particle is a direct decay product from a prompt tau
+//  isDirectHadronDecayProduct()	//this particle is a direct decay product from a hadron
+//  isHardProcess()			//this particle is part of the hard process
+//  fromHardProcess()			//this particle is the direct descendant of a hard process particle of the same pdg id
+//  isHardProcessTauDecayProduct()	//this particle is a direct or indirect decay product of a tau from the hard process
+//  isDirectHardProcessTauDecayProduct()//this particle is a direct decay product of a tau from the hard process
+//  fromHardProcessBeforeFSR()		//this particle is the direct descendant of a hard process particle of the same pdg id For outgoing particles the kinematics are those before QCD or QED FSR
+
+  if( abs(ancestorPID) == 15 && ancestorStatus == 2) return TRUE_ELECTRON_FROM_TAU; // 2
+  if( (abs(ancestorPID) == 4 || abs(ancestorPID) / 100 == 4 || abs(ancestorPID) / 1000 == 4  ) )   return TRUE_ELECTRON_FROM_C; // 4; electron from c
+  if( (abs(ancestorPID) == 5 || abs(ancestorPID) / 100 == 5 || abs(ancestorPID) / 1000 == 5  ) )   return TRUE_ELECTRON_FROM_B; // 5; electron from b
+  if( abs(ancestorPID) > 50 && ancestorStatus == 2)  return TRUE_NON_PROMPT_ELECTRON; // 3
+  //if( abs(ancestorPID) == 22 && ancestorStatus == 1)   return TRUE_PROMPT_PHOTON;   // 6; prompt photon (likely conversion)
+  if( abs(ancestorPID) == 22 )   return TRUE_PROMPT_PHOTON;   // 6; prompt photon (likely conversion)
 
   // What remains is true prompt electrons
-  return TRUE_PROMPT_ELECTRON;
-
-
-
-
+  return TRUE_PROMPT_ELECTRON; // 1
 
 }
 
