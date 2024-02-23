@@ -30,18 +30,18 @@ MySRMUSERDIR=/xrd/store/user/$USER
 
 function dirString { dataStr=${1//\//_D_}; echo ${dataStr/_D_/}; }
 
-function stringInFile { numDup=0; 
+function stringInFile { numDup=0;
    for str in `cat $1`; do bname1=`basename $str`; dname1=`dirname $str`; bname2=`basename $2`; dname2=`dirname $2`;
       if [ "${bname1}" == "${bname2}" ] && [ "${dname1}" == "${dname2}" ]; then ((numDup++)); fi
    done
-   echo $numDup 
+   echo $numDup
 }
 
 function removeDupLineInFile {
    file=$1 ; tmpFile="${file}.temp${RANDOM}" ; rm -rf $tmpFile ; touch $tmpFile
    for str in `cat $file`; do
-      if [ "`stringInFile $tmpFile $str`" == "0" ]; then 
-			echo "$str" >> $tmpFile
+      if [ "`stringInFile $tmpFile $str`" == "0" ]; then
+                        echo "$str" >> $tmpFile
       else
          echo " @ DupLine $str, ignored it"
       fi
@@ -50,96 +50,96 @@ function removeDupLineInFile {
 }
 
 function PrintSet() {
-	echo "##################"
-	echo "@python $MyCFG"
-	if [ "$MyCMSARG" ]; then echo "@cmsRunARG $MyCMSARG"; fi
-	if [ "$MyDataset" ]; then echo "@dataset $MyDataset"; fi
-	if [ "$MyListFile" ]; then echo "@list $MyListFile"; fi
-	if [ "$MyJSON" ]; then echo @"json $MyJSON"; fi
-	echo "@MaxFiles $MyMaxFiles"
-	echo "@CondorName $myCondorName"
-	echo "@CurrentDir $PWD"
-	echo "@CondorWork $myCondorWorkDir"
-	echo "##################"
-	echo ""
+        echo "##################"
+        echo "@python $MyCFG"
+        if [ "$MyCMSARG" ]; then echo "@cmsRunARG $MyCMSARG"; fi
+        if [ "$MyDataset" ]; then echo "@dataset $MyDataset"; fi
+        if [ "$MyListFile" ]; then echo "@list $MyListFile"; fi
+        if [ "$MyJSON" ]; then echo @"json $MyJSON"; fi
+        echo "@MaxFiles $MyMaxFiles"
+        echo "@CondorName $myCondorName"
+        echo "@CurrentDir $PWD"
+        echo "@CondorWork $myCondorWorkDir"
+        echo "##################"
+        echo ""
 }
 
 function PrintUsage() {
-	echo "usage $0 -help --> PrintUsage" 
-	echo "usageToSubmit $0 -py=cmsRun.py -dataset=DATASET" 
-	echo "usageToSubmit $0 -py=cmsRun.py -list=listfile"
-	echo "usageToSubmit $0 -py=cmsRun.py -dataset=DATASET -nfiles=1 -json=JSONfile -output=hist.root  -arg=\"isMC=True isData=False\" -url=root://cms-xrdr.sdfarm.kr:1094//xrd/ -srmdir=MCProd"
-	echo "usageToCheck  $0 -check=condorRunDirectory"
-	echo "usageToMegeHist  $0 -mergeHist=condorRunDirectory"
-	echo "usageToCheck  $0 -makejson=condorRunDirectory"
-	exit
+        echo "usage $0 -help --> PrintUsage"
+        echo "usageToSubmit $0 -py=cmsRun.py -dataset=DATASET"
+        echo "usageToSubmit $0 -py=cmsRun.py -list=listfile"
+        echo "usageToSubmit $0 -py=cmsRun.py -dataset=DATASET -nfiles=1 -json=JSONfile -output=hist.root  -arg=\"isMC=True isData=False\" -url=root://cms-xrdr.sdfarm.kr:1094//xrd/ -srmdir=MCProd"
+        echo "usageToCheck  $0 -check=condorRunDirectory"
+        echo "usageToMegeHist  $0 -mergeHist=condorRunDirectory"
+        echo "usageToCheck  $0 -makejson=condorRunDirectory"
+        exit
 }
 
 function CondorIWDs() {
-	JobIDs=`condor_q | grep $USER | awk '{print $1}' | cut -d. -f1 | uniq`
-	for JobID in $JobIDs
-	do
-   	a=`condor_q -l $JobID | grep Iwd | head -n 1 | awk '{print $3}' | xargs basename`
-		b=`condor_q $JobID | grep " R " | wc -l`
-		c=`condor_q $JobID | grep " I " | wc -l`
-		echo "Running $JobID $a Run $b Idle $c"
-	done
+        JobIDs=`condor_q | grep $USER | awk '{print $1}' | cut -d. -f1 | uniq`
+        for JobID in $JobIDs
+        do
+        a=`condor_q -l $JobID | grep Iwd | head -n 1 | awk '{print $3}' | xargs basename`
+                b=`condor_q $JobID | grep " R " | wc -l`
+                c=`condor_q $JobID | grep " I " | wc -l`
+                echo "Running $JobID $a Run $b Idle $c"
+        done
 }
 
 
 function DoStatus() {
-	condor_q -submitter $USER | tail -n 1
-	thisJobN=""
-	if [ $1 ]; then
-		thisBNameA=`basename $1`
-		thisJobN=`CondorIWDs | grep $thisBNameA | awk '{print $2}'`
-		if [ "${thisJobN}" == "" ]; then echo "Done $thisBNameA"; return; fi
-	fi
-	nAllJobs=`condor_q $thisJobN | grep $USER | grep runCMSRUN.sh | wc -l`
-	nIdleJobs=`condor_q $thisJobN | grep $USER | grep " I " | grep runCMSRUN.sh | wc -l`
-	condorIDs=`condor_q $thisJobN | grep $USER | grep " R " | grep runCMSRUN.sh | awk '{print $1}'`
-	total=0
-	for id in $condorIDs; do ((total++)) ; done
-	tabs 5 
-	thisIndex=0
-	echo "### CondorJobs $USER All $nAllJobs Run $total Idle $nIdleJobs"
-	for id in $condorIDs
-	do
-   	((thisIndex++))
-#   	all=`condor_tail -maxbytes 102400000 $id | grep "@finalEDMJSON" | awk '{print $6}'`
-#   	this=`condor_tail -maxbytes 1024 $id | grep "Begin" | tail -n 1 | awk '{print $4}' | sed -e 's/st//g' | sed -e 's/nd//g' | sed -e 's/rd//g' | sed -e 's/th//g'`
-		condor_tail -maxbytes 1024000000 $id > /tmp/${id}.condortmp 2>/dev/null
-#		cat /tmp/${id}.condortmp | wc -l
-		if [ "$?" == "0" ]; then
-	   	all=`head -n 10000 /tmp/${id}.condortmp | grep "@finalEDMJSON" | awk '{print $6}'`
-   		this=`tail -n 10000 /tmp/${id}.condortmp | grep "Begin" | tail -n 1 | awk '{print $4}' | sed -e 's/st//g' | sed -e 's/nd//g' | sed -e 's/rd//g' | sed -e 's/th//g'`
-	   	per=`expr $this \* 100 / $all`
-  			diff=`expr $all - $this`
-   		#iwd=`condor_q -l $id  | grep Iwd | awk '{print $3}' | xargs -n 1 basename | sed -e 's/_D_/:/g' | cut -d: -f1,2 | sed -e 's/:/_D_/g'`
-   		iwd=`condor_q -l $id  | grep Iwd | awk '{print $3}' | xargs -n 1 basename `
-   		echo -e "`printf %3d $thisIndex`/$total/$nAllJobs $id\t`printf %2d ${per}`% (`printf %6d $this`/`printf %6d $all`)\t$iwd "
-		else
-			echo -e "`printf %3d $thisIndex`/$total/$nAllJobs $id Done "
-		fi
-		rm -rf /tmp/${id}.condortmp
-	done
-	exit	
+        condor_q -submitter $USER | tail -n 1
+        thisJobN=""
+        if [ $1 ]; then
+                thisBNameA=`basename $1`
+                thisJobN=`CondorIWDs | grep $thisBNameA | awk '{print $2}'`
+                if [ "${thisJobN}" == "" ]; then echo "Done $thisBNameA"; return; fi
+        fi
+        nAllJobs=`condor_q $thisJobN | grep $USER | grep runCMSRUN.sh | wc -l`
+        nIdleJobs=`condor_q $thisJobN | grep $USER | grep " I " | grep runCMSRUN.sh | wc -l`
+        condorIDs=`condor_q $thisJobN | grep $USER | grep " R " | grep runCMSRUN.sh | awk '{print $1}'`
+        total=0
+        for id in $condorIDs; do ((total++)) ; done
+        tabs 5
+        thisIndex=0
+        echo "### CondorJobs $USER All $nAllJobs Run $total Idle $nIdleJobs"
+        for id in $condorIDs
+        do
+        ((thisIndex++))
+#       all=`condor_tail -maxbytes 102400000 $id | grep "@finalEDMJSON" | awk '{print $6}'`
+#       this=`condor_tail -maxbytes 1024 $id | grep "Begin" | tail -n 1 | awk '{print $4}' | sed -e 's/st//g' | sed -e 's/nd//g' | sed -e 's/rd//g' | sed -e 's/th//g'`
+                condor_tail -maxbytes 1024000000 $id > /tmp/${id}.condortmp 2>/dev/null
+#               cat /tmp/${id}.condortmp | wc -l
+                if [ "$?" == "0" ]; then
+                all=`head -n 10000 /tmp/${id}.condortmp | grep "@finalEDMJSON" | awk '{print $6}'`
+                this=`tail -n 10000 /tmp/${id}.condortmp | grep "Begin" | tail -n 1 | awk '{print $4}' | sed -e 's/st//g' | sed -e 's/nd//g' | sed -e 's/rd//g' | sed -e 's/th//g'`
+                per=`expr $this \* 100 / $all`
+                        diff=`expr $all - $this`
+                #iwd=`condor_q -l $id  | grep Iwd | awk '{print $3}' | xargs -n 1 basename | sed -e 's/_D_/:/g' | cut -d: -f1,2 | sed -e 's/:/_D_/g'`
+                iwd=`condor_q -l $id  | grep Iwd | awk '{print $3}' | xargs -n 1 basename `
+                echo -e "`printf %3d $thisIndex`/$total/$nAllJobs $id\t`printf %2d ${per}`% (`printf %6d $this`/`printf %6d $all`)\t$iwd "
+                else
+                        echo -e "`printf %3d $thisIndex`/$total/$nAllJobs $id Done "
+                fi
+                rm -rf /tmp/${id}.condortmp
+        done
+        exit
 }
 
 function argvPar {
-	if [ ! $1 ]; then PrintUsage; fi
-	doCheck=0
-	doMergeHist=0
+        if [ ! $1 ]; then PrintUsage; fi
+        doCheck=0
+        doMergeHist=0
    for argv in $@
    do
       arg1=`echo $argv | cut -d"=" -f 1`
       arg2=`echo $argv | cut -d"=" -f 2-`
-		arg2=${arg2//,/ }
-		#echo "ARg1 $arg1 AAA"
-		#echo "ARg2 $arg2 BBB"
-		#exit
-		if [ "${arg1}" == "-h" ]; then PrintUsage; fi
-		if [ "${arg1}" == "-help" ]; then PrintUsage; fi
+                arg2=${arg2//,/ }
+                #echo "ARg1 $arg1 AAA"
+                #echo "ARg2 $arg2 BBB"
+                #exit
+                if [ "${arg1}" == "-h" ]; then PrintUsage; fi
+                if [ "${arg1}" == "-help" ]; then PrintUsage; fi
       if [ "${arg1}" == "-py"         ]; then MyCFG=${arg2}      ; continue; fi
       if [ "${arg1}" == "-list"       ]; then MyListFile=${arg2} ; continue; fi
       if [ "${arg1}" == "-json"       ]; then MyJSON=${arg2}     ; continue; fi
@@ -157,63 +157,63 @@ function argvPar {
       if [ "${arg1}" == "-makejson"   ]; then doMakeJson=1; MyXMLDirs="${arg2}" ; continue; fi
       if [ "${arg1}" == "-status"     ]; then doStatus=1; MyStatusDir="${arg2}"; continue; fi
       if [ "${arg1}" == "-run"        ]; then CondorIWDs ; exit; continue; fi
-      echo -e "\e[31mUnknownOption $argv Ignored it! \e[0m" 
+      echo -e "\e[31mUnknownOption $argv Ignored it! \e[0m"
    done
 
-	if [ "${doCheck}" == "1" ]; then
-		if [ "${MyCheckDir}" == "-check" ]; then 
-			MyCheckDir=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
-		fi
-	fi
+        if [ "${doCheck}" == "1" ]; then
+                if [ "${MyCheckDir}" == "-check" ]; then
+                        MyCheckDir=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
+                fi
+        fi
 
-	if [ "${doMergeHist}" == "1" ]; then
-		if [ "${MyMergeHistDir}" == "-mergeHist" ]; then 
-			MyMergeHistDir=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
-		fi
-	fi
+        if [ "${doMergeHist}" == "1" ]; then
+                if [ "${MyMergeHistDir}" == "-mergeHist" ]; then
+                        MyMergeHistDir=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
+                fi
+        fi
 
-	if [ "${doMakeJson}" == "1" ]; then
-		if [ "${MyXMLDirs}" == "-makejson" ]; then 
-			MyXMLDirs=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
-		fi
-	fi
+        if [ "${doMakeJson}" == "1" ]; then
+                if [ "${MyXMLDirs}" == "-makejson" ]; then
+                        MyXMLDirs=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
+                fi
+        fi
 
-#	if [ "${doStatus}" == "1" ]; then
-#		if [ "${MyStatusDir}" == "-status" ]; then 
-#			#MyStatusDir=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
-#			MyStatusDir=""
-#		fi
-#	fi
+#       if [ "${doStatus}" == "1" ]; then
+#               if [ "${MyStatusDir}" == "-status" ]; then
+#                       #MyStatusDir=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
+#                       MyStatusDir=""
+#               fi
+#       fi
 
-#//	if [ "`echo ${MyXMLDirs} | grep makejson | wc -l`" == "1" ]; then 
-#//		MyXMLDirs=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
-#//	fi
+#//     if [ "`echo ${MyXMLDirs} | grep makejson | wc -l`" == "1" ]; then
+#//             MyXMLDirs=`find . -maxdepth 1 -type d -name "condor_*" | xargs -n 1 basename`
+#//     fi
 
-	if [ ! -f $MyCFG ]; then echo "Error NotFound $MyCFG"; exit; fi
-	if [ $MyDataset ]; then 
-		if [ $MyListFile ]; then
-			echo "$MyDataset or $MyListFile"; exit;
-		fi
-	fi
-	if [ $MyListFile ] && [ ! -f $MyListFile ]; then echo "Error NotFound $MyListFile"; exit; fi
-	if [ $MyJSON ] && [ ! -f $MyJSON ]; then echo "Error NotFound $MyJSON"; exit; fi
+        if [ ! -f $MyCFG ]; then echo "Error NotFound $MyCFG"; exit; fi
+        if [ $MyDataset ]; then
+                if [ $MyListFile ]; then
+                        echo "$MyDataset or $MyListFile"; exit;
+                fi
+        fi
+        if [ $MyListFile ] && [ ! -f $MyListFile ]; then echo "Error NotFound $MyListFile"; exit; fi
+        if [ $MyJSON ] && [ ! -f $MyJSON ]; then echo "Error NotFound $MyJSON"; exit; fi
 
-	if [ "${HostSubmit}" == "-submit" ]; then HostSubmit="local"; fi
+        if [ "${HostSubmit}" == "-submit" ]; then HostSubmit="local"; fi
 
-	DataString=`dirString ${MyDataset}`
-	if [ "${MyListFile}" != "" ]; then 
-		bNameMyListFile=`basename ${MyListFile}`
-		bNameMyListFile=${bNameMyListFile//\./_}
-		DataString=${bNameMyListFile} 
-	fi
-	myCondorName="condor_${DataString}_`date +"%y%m%d_%H%M%S"`"
-	myCondorWorkDir=${FirstDir}/${myCondorName}
-	if [ "$MyCFG" != "" ]; then echo "### MyCondorWorkingDir $myCondorName" ; fi
+        DataString=`dirString ${MyDataset}`
+        if [ "${MyListFile}" != "" ]; then
+                bNameMyListFile=`basename ${MyListFile}`
+                bNameMyListFile=${bNameMyListFile//\./_}
+                DataString=${bNameMyListFile}
+        fi
+        myCondorName="condor_${DataString}_`date +"%y%m%d_%H%M%S"`"
+        myCondorWorkDir=${FirstDir}/${myCondorName}
+        if [ "$MyCFG" != "" ]; then echo "### MyCondorWorkingDir $myCondorName" ; fi
 }
 
 function MakeDataList {
    echo "# Make List for ${MyDataset}${MyListFile}"
-	export SSL_CERT_DIR='/etc/grid-security/certificates'
+        export SSL_CERT_DIR='/etc/grid-security/certificates'
    if [ $MyListFile ]; then
       ThisGURL=""
       cp `readlink -f $MyListFile` ${myCondorWorkDir}/.inputfiles.das
@@ -226,20 +226,20 @@ function MakeDataList {
       if [ "`cat ${myCondorWorkDir}/inputfiles.das | wc -l`" == "0" ]; then echo "Not Found Files in $Dataset" >> $myCondorWorkDir/.jobConfigError; fi
    else
       if [ "${MyDataset:(-4)}" == "USER" ]; then instance="instance=prod/phys03"; fi
-		DataString=`dirString ${MyDataset}`
+                DataString=`dirString ${MyDataset}`
       das_client --query="file dataset=${MyDataset} ${instance} system=dbs3 | grep file.name, file.nevents" --limit=0 | grep ".root" | sed "s/[\[\'\"\,]//g" >  ${myCondorWorkDir}/.inputfiles.das
       sites=`das_client --query="site dataset=${MyDataset} ${instance}" --limit=0`
       #sites=${sites//'N/A'/}
       sitesStr=""
       for site in $sites
-		do 
-			if [ "${site:0:2}" == "T1" ] || [ "${site:0:2}" == "T2" ] || [ "${site:0:2}" == "T3" ]; then sitesStr="$sitesStr $site"; fi
-		done
+                do
+                        if [ "${site:0:2}" == "T1" ] || [ "${site:0:2}" == "T2" ] || [ "${site:0:2}" == "T3" ]; then sitesStr="$sitesStr $site"; fi
+                done
       isKISTI=`echo $sites | grep -E "T3_KR_KISTI|cms-se.sdfarm.kr" | wc -l`
       URL="root://cms-xrd-global.cern.ch/"
       if [ "${isKISTI}" != "0" ]; then URL="root://cms-xrdr.sdfarm.kr:1094//xrd/"; fi
       ThisGURL=$URL
-		if [ ! $MyURL ]; then MyURL=${ThisGURL} ; fi
+                if [ ! $MyURL ]; then MyURL=${ThisGURL} ; fi
       cp -r ${myCondorWorkDir}/.inputfiles.das ${myCondorWorkDir}/inputfiles.das
       chmod -w ${myCondorWorkDir}/.inputfiles.das
       echo -n "   @ " >> ${myCondorWorkDir}/.das${DataString}.summary
@@ -247,21 +247,21 @@ function MakeDataList {
       echo -n "   @ " >> ${myCondorWorkDir}/.das${DataString}.summary
       head -n 1 ${myCondorWorkDir}/inputfiles.das >> ${myCondorWorkDir}/.das${DataString}.summary
       if [ "`cat ${myCondorWorkDir}/inputfiles.das | wc -l`" == "0" ]; then echo "Not Found Files in $Dataset" >> $myCondorWorkDir/.jobConfigError; fi
-		echo "   @ SITES: $sitesStr" >> ${myCondorWorkDir}/.das${DataString}.summary
-		cat ${myCondorWorkDir}/.das${DataString}.summary
-		cat ${myCondorWorkDir}/inputfiles.das >> ${myCondorWorkDir}/.das${DataString}.summary
+                echo "   @ SITES: $sitesStr" >> ${myCondorWorkDir}/.das${DataString}.summary
+                cat ${myCondorWorkDir}/.das${DataString}.summary
+                cat ${myCondorWorkDir}/inputfiles.das >> ${myCondorWorkDir}/.das${DataString}.summary
    fi
    if [ "`cat ${myCondorWorkDir}/inputfiles.das | wc -l`" == "0" ]; then echo "   Error Not Found inputfiles in ${Dataset} !!! Goto exit"; exit; fi
 }
 
 function MakeCMSSW {
-	echo "### Make PSet for Condor"
-	CondorSrc="$myCondorWorkDir/input/src"
-	if [ ! -d $CondorSrc ]; then mkdir -p $CondorSrc ; fi
-	MakePSetFile="${CondorSrc}/makePSet"
-	CMSSWPKL="${CondorSrc}/CMSSW.pkl"
-	CMSSWCFG="${CondorSrc}/CMSSW.py"
-	CMSSWOUTFILE="${CondorSrc}/CMSSW.outname"
+        echo "### Make PSet for Condor"
+        CondorSrc="$myCondorWorkDir/input/src"
+        if [ ! -d $CondorSrc ]; then mkdir -p $CondorSrc ; fi
+        MakePSetFile="${CondorSrc}/makePSet"
+        CMSSWPKL="${CondorSrc}/CMSSW.pkl"
+        CMSSWCFG="${CondorSrc}/CMSSW.py"
+        CMSSWOUTFILE="${CondorSrc}/CMSSW.outname"
 #from FWCore.ParameterSet.VarParsing import VarParsing
 cat << EOF >  ${MakePSetFile}
 #!/usr/bin/env python3
@@ -275,90 +275,90 @@ handle = open(filename,'r')
 cfo = imp.load_source("pycfg",filename, handle)
 cmsProcess = cfo.process
 if hasattr(cmsProcess, 'options'):
-	cmsProcess.options.wantSummary = cms.untracked.bool(True)
+        cmsProcess.options.wantSummary = cms.untracked.bool(True)
 else:
-	cmsProcess.options = cms.untracked.PSet(wantSummary = cms.untracked.bool(True))
+        cmsProcess.options = cms.untracked.PSet(wantSummary = cms.untracked.bool(True))
 pklFileName = "${CMSSWPKL}"
 pklFile = open(pklFileName,"wb")
 pickle.dump(cmsProcess, pklFile)
 pklFile.close()
 outNameFile = open('${CMSSWOUTFILE}','w')
 if hasattr(cmsProcess, 'TFileService'):
-	outNameFile.write(cmsProcess.TFileService.fileName.value()+" \\n")
+        outNameFile.write(cmsProcess.TFileService.fileName.value()+" \\n")
 for modName in cmsProcess.outputModules_():
-	outNameFile.write(getattr(cmsProcess, modName).fileName.value()+" \\n")
+        outNameFile.write(getattr(cmsProcess, modName).fileName.value()+" \\n")
 outNameFile.close()
 EOF
-	echo "python3 ${MakePSetFile} ${MyCFG} ${MyCMSARG} >& ${MakePSetFile}.log"
-	python3 ${MakePSetFile} ${MyCFG} ${MyCMSARG} >& ${MakePSetFile}.log
-	ThisJobStatus=$?
-	if [ "$ThisJobStatus" != "0" ]; then echo "   @ Error MakePSet "; cat ${MakePSetFile}.log; exit; fi
-#	rm -rf $MakePSetFile ${MakePSetFile}.log
+        echo "python3 ${MakePSetFile} ${MyCFG} ${MyCMSARG} >& ${MakePSetFile}.log"
+        python ${MakePSetFile} ${MyCFG} ${MyCMSARG} >& ${MakePSetFile}.log
+        ThisJobStatus=$?
+        if [ "$ThisJobStatus" != "0" ]; then echo "   @ Error MakePSet "; cat ${MakePSetFile}.log; exit; fi
+#       rm -rf $MakePSetFile ${MakePSetFile}.log
 cat << EOF > $CMSSWCFG
 import FWCore.ParameterSet.Config as cms
 import pickle, os
 process = pickle.load(open('CMSSW.pkl', 'rb'))
-#process.options.wantSummary = cms.untracked.bool(True) # make some problem for unschedules 
+#process.options.wantSummary = cms.untracked.bool(True) # make some problem for unschedules
 f = open('ThisInputFiles.list','r')
 tempInFiles = f.readlines()
 f.close()
 InFiles = [(InFile.replace('\\n','')) for InFile in tempInFiles]
 process.source.fileNames = InFiles
 for file in InFiles:
-	print('cmsRunInFile:' + file)
+        print('cmsRunInFile:' + file)
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(-1))
 EOF
-	if [ "$MyJSON" != "" ]; then
-		bJSON=`basename $MyJSON`
-		cp -r `readlink -f $MyJSON` ${CondorSrc}/$bJSON
+        if [ "$MyJSON" != "" ]; then
+                bJSON=`basename $MyJSON`
+                cp -r `readlink -f $MyJSON` ${CondorSrc}/$bJSON
 cat << EOF >> $CMSSWCFG
 import FWCore.PythonUtilities.LumiList as LumiList
 process.source.lumisToProcess = LumiList.LumiList(filename = '${bJSON}').getVLuminosityBlockRange()
 EOF
-	fi
+        fi
    if [ "${MyAddOutFiles}" != "" ]; then
       for addout in ${MyAddOutFiles//,/ }; do echo "$addout" >> ${CMSSWOUTFILE}; done
    fi
    removeDupLineInFile ${CMSSWOUTFILE}
    numOutFile=`cat ${CMSSWOUTFILE} | wc -l`
-   echo -n "   @ Found OutFileName $numOutFile " 
+   echo -n "   @ Found OutFileName $numOutFile "
    for out_name_file in `cat ${CMSSWOUTFILE}`; do OutROOTNames="${out_name_file} ${OutROOTNames}"; done
    echo $OutROOTNames
 
    echo "### MakeInput"
    cd $myCondorWorkDir/input
-	if [ "${MyCMDFiles}" != "" ]; then 
-		for MyCMDFile in ${MyCMDFiles//,/ }
-		do
-			echo "### ADD $MyCMDFile in $CMSSW_BASE/src/" 
-			cp -r `readlink -f $FirstDir/$MyCMDFile` ${CondorSrc}
-		done
-	fi
+        if [ "${MyCMDFiles}" != "" ]; then
+                for MyCMDFile in ${MyCMDFiles//,/ }
+                do
+                        echo "### ADD $MyCMDFile in $CMSSW_BASE/src/"
+                        cp -r `readlink -f $FirstDir/$MyCMDFile` ${CondorSrc}
+                done
+        fi
    ln -s $CMSSW_BASE/lib .
    ln -s $CMSSW_BASE/biglib .
-#	ln -s $CMSSW_BASE/external .
+#       ln -s $CMSSW_BASE/external .
 ###################
-	cDir=$PWD
-	inDataDirs=`find $CMSSW_BASE/src -type d -name "data"`
-	for inDataDir in $inDataDirs
-	do
-   	size=`du $inDataDir | tail -n 1 | awk '{print $1}'`
-   	if [ $size -gt 1000000 ]; then echo "### $inDataDir is bigger than 1GB"; fi
-		echo -n "   @cpying data dir "
-		du -h $inDataDir | tail -n 1
-	   nameDataDir="${inDataDir/"${CMSSW_BASE}/src/"/}"
-		nameDataDir=`dirname $nameDataDir`
-		cd src
-		mkdir -p $nameDataDir
-		cd $nameDataDir
-		ln -s $inDataDir .
-		cd $cDir
-	done
-	if [ "${AddSRCs}" != "" ]; then
-		cd src
-		for AddSRC in $AddSRCs; do ln -s $CMSSW_BASE/src/$AddSRC .; done
-		cd ../
-	fi
+        cDir=$PWD
+        inDataDirs=`find $CMSSW_BASE/src -type d -name "data"`
+        for inDataDir in $inDataDirs
+        do
+        size=`du $inDataDir | tail -n 1 | awk '{print $1}'`
+        if [ $size -gt 1000000 ]; then echo "### $inDataDir is bigger than 1GB"; fi
+                echo -n "   @cpying data dir "
+                du -h $inDataDir | tail -n 1
+           nameDataDir="${inDataDir/"${CMSSW_BASE}/src/"/}"
+                nameDataDir=`dirname $nameDataDir`
+                cd src
+                mkdir -p $nameDataDir
+                cd $nameDataDir
+                ln -s $inDataDir .
+                cd $cDir
+        done
+        if [ "${AddSRCs}" != "" ]; then
+                cd src
+                for AddSRC in $AddSRCs; do ln -s $CMSSW_BASE/src/$AddSRC .; done
+                cd ../
+        fi
 ##################
    tar zcfh ../input.tgz *
    rm -rf ${myCondorWorkDir}/input
@@ -366,15 +366,15 @@ EOF
 }
 
 function MakeJob {
-	echo "$JobCMD" > ${myCondorWorkDir}/.jobCMD
+        echo "$JobCMD" > ${myCondorWorkDir}/.jobCMD
    echo "# Make Condor Config "
    mkdir -p ${myCondorWorkDir}/condorLog
    totalNFile=`cat $myCondorWorkDir/inputfiles.das | wc -l`
    totalNFileT=`expr $totalNFile + $MyMaxFiles - 1`
    nJob=`expr $totalNFileT / $MyMaxFiles`
    echo "   @ NJobs $nJob for $totalNFile / $MyMaxFiles"
-	SRMOutDir="NULL"
-	if [ "${MyCondorOutSRM}" != "NULL" ]; then SRMOutDir="${MyCondorOutSRM}/`basename ${myCondorWorkDir}`"; fi
+        SRMOutDir="NULL"
+        if [ "${MyCondorOutSRM}" != "NULL" ]; then SRMOutDir="${MyCondorOutSRM}/`basename ${myCondorWorkDir}`"; fi
 cat << EOF > ${myCondorWorkDir}/job.jdl
 executable = \$ENV(PWD)/runCMSRUN.sh
 universe = vanilla
@@ -386,115 +386,115 @@ should_transfer_files = yes
 initialdir = \$ENV(PWD)
 transfer_input_files = input.tgz, inputfiles.das
 when_to_transfer_output = ON_EXIT
-transfer_output_files = condorOut, cmsRunLog 
+transfer_output_files = condorOut, cmsRunLog
 environment = "CONDOR_ID=\$(Cluster)_\$(Process)  SRMOUTDIR=${SRMOutDir}"
 #requirements = ( HasSingularity == true )
 #accounting_group=group_cms
 #+SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el6:latest"
 #+SingularityBind = "/cvmfs, /cms, /share, /hcp"
-#requirements = (machine != "wn3021.sdfarm.kr") && (machine != "wn3020.sdfarm.kr") 
-#requirements = \$(requirements) && (machine != "cms-t3-wn2007.sdfarm.kr") 
+#requirements = (machine != "wn3021.sdfarm.kr") && (machine != "wn3020.sdfarm.kr")
+#requirements = \$(requirements) && (machine != "cms-t3-wn2007.sdfarm.kr")
 #arguments = ${MyMaxFiles} root://cms-xrd-global.cern.ch/
 #arguments = ${MyMaxFiles} root://cms-xrdr.sdfarm.kr:1094//xrd/
 arguments = ${MyMaxFiles} ${MyURL}
-queue $nJob 
+queue $nJob
 EOF
-	cp ${myCondorWorkDir}/job.jdl ${myCondorWorkDir}/.job.jdl
-	tar zchf ${myCondorName}.tgz ${myCondorName}
-	tarFile=${myCondorName}/.${myCondorName}.tgz
-	mv ${myCondorName}.tgz $tarFile
-	if [ -f $myCondorWorkDir/.jobConfigError ]; then
-	   echo ""
-	   echo -e "### Condor Setup Error "
-	   cat $myCondorWorkDir/.jobConfigError
-	else
-	   echo "ToSubmit \$> cd ${myCondorName}; condor_submit job.jdl; cd -"
-	fi
-	if [ "$AutoSubmit" == "1" ]; then
-		host=`echo "${HostSubmit}:" | cut -f 1 -d":"`
-		hostDir=`echo "${HostSubmit}:" | cut -f 2 -d":"`
-		echo "SubmitTo $host $hostDir"
-		if [ "$host" == "ui02" ] || [ "$host" == "ui02.sdfarm.kr" ]; then
-			host=ui02.sdfarm.kr
-			if [ "$hostDir" == "" ]; then hostDir=/hcp/data/data02/${USER}/CondorRun ; fi
-			if [ "${hostDir:0:1}" != "/" ]; then hostDir=/hcp/data/data02/${USER}/CondorRun/${hostDir} ; fi
-			bTarFile=`basename ${myCondorName}/.${myCondorName}.tgz`
-			name=${bTarFile/./}
-			name=${name/.tgz/}
-			ssh -p 4280 $host "if [ ! -d $hostDir ]; then mkdir -p $hostDir ; fi"
-			isOK=`ssh -p 4280 $host "if [ -d $hostDir ]; then echo OK; fi"`
-			if [ "$isOK" == "OK" ]; then
-				echo "#RemoteSubmit $tarFile ${host}:${hostDir}/"
-				scp -P 4280  $tarFile ${host}:${hostDir}/
-				ssh -p 4280 ${host} "cd ${hostDir}/; tar zxvf $bTarFile; mv $bTarFile $name; cd $name; condor_submit job.jdl; exit;" | tee ${myCondorName}/.jobClusterID_ui02
-			fi
-		elif [ "$host" == "ui10" ] || [ "${host}" == "ui20" ]; then
-			if [ "$host" == "ui10" ]; then host=ui10.sdfarm.kr; fi
-			if [ "$host" == "ui20" ]; then host=ui20.sdfarm.kr; fi
-			if [ "$hostDir" == "" ]; then hostDir=/cms/scratch/${USER}/CondorRun ; fi
-			if [ "${hostDir:0:1}" != "/" ]; then hostDir=/cms/scratch/${USER}/CondorRun/${hostDir} ; fi
-			bTarFile=`basename ${myCondorName}/.${myCondorName}.tgz`
-			name=${bTarFile/./}
-			name=${name/.tgz/}
-			ssh -p 4280 $host "if [ ! -d $hostDir ]; then mkdir -p $hostDir ; fi"
-			isOK=`ssh -p 4280 $host "if [ -d $hostDir ]; then echo OK; fi"`
-			if [ "$isOK" == "OK" ]; then
-				echo "#RemoteSubmit $tarFile ${host}:${hostDir}/"
-				scp -P 4280 $tarFile ${host}:${hostDir}/
-				ssh -p 4280 ${host} "cd ${hostDir}/; tar zxvf $bTarFile; mv $bTarFile $name; cd $name; condor_submit job.jdl; exit;" | tee ${myCondorName}/.jobClusterID_${host}
-			fi
-			echo "scp -P 4280 -r ${host}:${hostDir}/${name} ${PWD}/${myCondorName}/" >> ${myCondorName}/.jobClusterID_scp
-		elif [ "$HostSubmit" == "local" ]; then
-			cd ${myCondorName}
-			condor_submit job.jdl | tee .jobClusterID_local
-			cd -
-		else  
-			echo "### Error I don't know $HostSubmit"
-		fi
-	else
-		echo "NotSubmitYet" > ${myCondorName}/.jobClusterID_NotYet
-	fi
+        cp ${myCondorWorkDir}/job.jdl ${myCondorWorkDir}/.job.jdl
+        tar zchf ${myCondorName}.tgz ${myCondorName}
+        tarFile=${myCondorName}/.${myCondorName}.tgz
+        mv ${myCondorName}.tgz $tarFile
+        if [ -f $myCondorWorkDir/.jobConfigError ]; then
+           echo ""
+           echo -e "### Condor Setup Error "
+           cat $myCondorWorkDir/.jobConfigError
+        else
+           echo "ToSubmit \$> cd ${myCondorName}; condor_submit job.jdl; cd -"
+        fi
+        if [ "$AutoSubmit" == "1" ]; then
+                host=`echo "${HostSubmit}:" | cut -f 1 -d":"`
+                hostDir=`echo "${HostSubmit}:" | cut -f 2 -d":"`
+                echo "SubmitTo $host $hostDir"
+                if [ "$host" == "ui02" ] || [ "$host" == "ui02.sdfarm.kr" ]; then
+                        host=ui02.sdfarm.kr
+                        if [ "$hostDir" == "" ]; then hostDir=/hcp/data/data02/${USER}/CondorRun ; fi
+                        if [ "${hostDir:0:1}" != "/" ]; then hostDir=/hcp/data/data02/${USER}/CondorRun/${hostDir} ; fi
+                        bTarFile=`basename ${myCondorName}/.${myCondorName}.tgz`
+                        name=${bTarFile/./}
+                        name=${name/.tgz/}
+                        ssh -p 4280 $host "if [ ! -d $hostDir ]; then mkdir -p $hostDir ; fi"
+                        isOK=`ssh -p 4280 $host "if [ -d $hostDir ]; then echo OK; fi"`
+                        if [ "$isOK" == "OK" ]; then
+                                echo "#RemoteSubmit $tarFile ${host}:${hostDir}/"
+                                scp -P 4280  $tarFile ${host}:${hostDir}/
+                                ssh -p 4280 ${host} "cd ${hostDir}/; tar zxvf $bTarFile; mv $bTarFile $name; cd $name; condor_submit job.jdl; exit;" | tee ${myCondorName}/.jobClusterID_ui02
+                        fi
+                elif [ "$host" == "ui10" ] || [ "${host}" == "ui20" ]; then
+                        if [ "$host" == "ui10" ]; then host=ui10.sdfarm.kr; fi
+                        if [ "$host" == "ui20" ]; then host=ui20.sdfarm.kr; fi
+                        if [ "$hostDir" == "" ]; then hostDir=/cms/scratch/${USER}/CondorRun ; fi
+                        if [ "${hostDir:0:1}" != "/" ]; then hostDir=/cms/scratch/${USER}/CondorRun/${hostDir} ; fi
+                        bTarFile=`basename ${myCondorName}/.${myCondorName}.tgz`
+                        name=${bTarFile/./}
+                        name=${name/.tgz/}
+                        ssh -p 4280 $host "if [ ! -d $hostDir ]; then mkdir -p $hostDir ; fi"
+                        isOK=`ssh -p 4280 $host "if [ -d $hostDir ]; then echo OK; fi"`
+                        if [ "$isOK" == "OK" ]; then
+                                echo "#RemoteSubmit $tarFile ${host}:${hostDir}/"
+                                scp -P 4280 $tarFile ${host}:${hostDir}/
+                                ssh -p 4280 ${host} "cd ${hostDir}/; tar zxvf $bTarFile; mv $bTarFile $name; cd $name; condor_submit job.jdl; exit;" | tee ${myCondorName}/.jobClusterID_${host}
+                        fi
+                        echo "scp -P 4280 -r ${host}:${hostDir}/${name} ${PWD}/${myCondorName}/" >> ${myCondorName}/.jobClusterID_scp
+                elif [ "$HostSubmit" == "local" ]; then
+                        cd ${myCondorName}
+                        condor_submit job.jdl | tee .jobClusterID_local
+                        cd -
+                else
+                        echo "### Error I don't know $HostSubmit"
+                fi
+        else
+                echo "NotSubmitYet" > ${myCondorName}/.jobClusterID_NotYet
+        fi
 }
 
 function DoCheck() {
 dir=$1
 if [ ! -d $dir/condorOut ]; then
-	echo -e "\e[1;31m Not submitted Yet $dir \e[0m "
-	return
+        echo -e "\e[1;31m Not submitted Yet $dir \e[0m "
+        return
 fi
 
 bDirName=`readlink -e $dir | xargs basename`
 isRunning=`CondorIWDs | grep $bDirName `
 if [ "${isRunning}" != "" ]; then
-	echo -e "\e[1;31m $isRunning DoCheck after Jobs are Done \e[0m "
-	echo "$isRunning" | awk '{print $2}' | xargs condor_q
-	ReCheckStrings="${ReCheckStrings}  $isRunning DoCheck after Jobs are Done \n" 
-	return
+        echo -e "\e[1;31m $isRunning DoCheck after Jobs are Done \e[0m "
+        echo "$isRunning" | awk '{print $2}' | xargs condor_q
+        ReCheckStrings="${ReCheckStrings}  $isRunning DoCheck after Jobs are Done \n"
+        return
 fi
 
 echo "DoCheck $dir"
 
 
-if [ -f $dir/DoneCheck ]; then 
-	cat $dir/DoneCheck;
-	### making listFile
-	nameListFile="${dir}/`basename ${dir}`.condorOutList"
-	if [ -f $nameListFile ]; then rm -rf $nameListFile; fi
-	nROOTcondorOut=`find $PWD/$dir/condorOut/ -maxdepth 1 -name "*.root" | wc -l` 
-	if [ "$nROOTcondorOut" != "0" ]; then
-		ls -v $PWD/$dir/condorOut/*.root > $nameListFile
-	fi
-	nSRM=`find $dir/condorOut/ -maxdepth 1 -name "*.srm" | wc -l`
-	if [ "$nSRM" != "0" ]; then
-		ls -v $dir/condorOut/*.srm | xargs cat >> ${nameListFile}
-	fi
-	isOK=Fail
-	numTabc=`find $dir/condorOut/ -maxdepth 1 -type f | wc -l`
-	numTdef=`cat $nameListFile | wc -l`
-	if [ "$numTabc" == "$numTdef" ]; then isOK=OK ; fi 
-	echo "#ListFile $isOK $numTabc $numTdef ${nameListFile}"
-	### end making listFile
-	return ; 
+if [ -f $dir/DoneCheck ]; then
+        cat $dir/DoneCheck;
+        ### making listFile
+        nameListFile="${dir}/`basename ${dir}`.condorOutList"
+        if [ -f $nameListFile ]; then rm -rf $nameListFile; fi
+        nROOTcondorOut=`find $PWD/$dir/condorOut/ -maxdepth 1 -name "*.root" | wc -l`
+        if [ "$nROOTcondorOut" != "0" ]; then
+                ls -v $PWD/$dir/condorOut/*.root > $nameListFile
+        fi
+        nSRM=`find $dir/condorOut/ -maxdepth 1 -name "*.srm" | wc -l`
+        if [ "$nSRM" != "0" ]; then
+                ls -v $dir/condorOut/*.srm | xargs cat >> ${nameListFile}
+        fi
+        isOK=Fail
+        numTabc=`find $dir/condorOut/ -maxdepth 1 -type f | wc -l`
+        numTdef=`cat $nameListFile | wc -l`
+        if [ "$numTabc" == "$numTdef" ]; then isOK=OK ; fi
+        echo "#ListFile $isOK $numTabc $numTdef ${nameListFile}"
+        ### end making listFile
+        return ;
 fi
 
 if [ ! -d $dir ]; then echo "#Error NotFound $dir directory"; exit;  fi
@@ -511,28 +511,28 @@ nNot=0
 rm -rf $dir/OKtemp
 for logFile in `ls -1v $dir/condorLog/condorLog*.log`
 do
-	bName=`basename $logFile`
-	bName=${bName/condorLog_/}
-	bName=${bName/.log/}
-	((idx++))
-	ok=`tail -n 1000 $logFile | grep "#FinalCondorRunResult cmsRunStatus 0 DiffnFiles 0 DiffEvtDAS_JSON 0 DiffEvtJSONGOOD_cmsRun 0" | wc -l`
-	if [ "$ok" == "1" ]; then
-		((nOK++)); 
-		tail -n 1000 $logFile | grep "^ThisRunFileOK" | awk '{print $2}' >> $dir/OKtemp
-	else 
-		((nNot++));
-		if [ ! -d ${dir}/fail/condorLog ]; then mkdir -p ${dir}/fail/condorLog ; fi
-		if [ ! -d ${dir}/fail/condorOut ]; then mkdir -p ${dir}/fail/condorOut ; fi
-		if [ ! -d ${dir}/fail/cmsRunLog ]; then mkdir -p ${dir}/fail/cmsRunLog ; fi
-		mv $logFile  ${dir}/fail/condorLog/
-		mv $dir/condorOut/*_${bName}.* ${dir}/fail/condorOut/
-		mv $dir/cmsRunLog/*_${bName}.* ${dir}/fail/cmsRunLog/
-	fi
-	if [ "$ok" == "0" ]; then
-		echo -e "\e[1;31mIdx $idx/$nJob nOK $nOK nFail $nNot This $ok $logFile \e[0m"
-	else
-		echo "Idx $idx/$nJob nOK $nOK nFail $nNot This $ok $logFile"
-	fi
+        bName=`basename $logFile`
+        bName=${bName/condorLog_/}
+        bName=${bName/.log/}
+        ((idx++))
+        ok=`tail -n 1000 $logFile | grep "#FinalCondorRunResult cmsRunStatus 0 DiffnFiles 0 DiffEvtDAS_JSON 0 DiffEvtJSONGOOD_cmsRun 0" | wc -l`
+        if [ "$ok" == "1" ]; then
+                ((nOK++));
+                tail -n 1000 $logFile | grep "^ThisRunFileOK" | awk '{print $2}' >> $dir/OKtemp
+        else
+                ((nNot++));
+                if [ ! -d ${dir}/fail/condorLog ]; then mkdir -p ${dir}/fail/condorLog ; fi
+                if [ ! -d ${dir}/fail/condorOut ]; then mkdir -p ${dir}/fail/condorOut ; fi
+                if [ ! -d ${dir}/fail/cmsRunLog ]; then mkdir -p ${dir}/fail/cmsRunLog ; fi
+                mv $logFile  ${dir}/fail/condorLog/
+                mv $dir/condorOut/*_${bName}.* ${dir}/fail/condorOut/
+                mv $dir/cmsRunLog/*_${bName}.* ${dir}/fail/cmsRunLog/
+        fi
+        if [ "$ok" == "0" ]; then
+                echo -e "\e[1;31mIdx $idx/$nJob nOK $nOK nFail $nNot This $ok $logFile \e[0m"
+        else
+                echo "Idx $idx/$nJob nOK $nOK nFail $nNot This $ok $logFile"
+        fi
 done
 
 rm -rf $dir/failed_inputfiles.das
@@ -544,16 +544,16 @@ if [ $nFiles -le 100 ]; then div="1"; fi
 echo "Checking InputFile"
 while read line
 do
-	((idx++))
-#	if [ "`expr $idx % $div`" == "0" ]; then ((per100++)); echo "   @CheckingInputFile $per100 % "; fi
-	fileName=`echo $line | awk '{print $1}'`
-	isOK=`grep "$fileName" $dir/OKtemp | wc -l`
-	if [ "$isOK" == "1" ]; then
-		echo $line >> $dir/succes_inputfiles.das
-	else
-		echo $line >> $dir/failed_inputfiles.das
-	fi
-done < $dir/.inputfiles.das  
+        ((idx++))
+#       if [ "`expr $idx % $div`" == "0" ]; then ((per100++)); echo "   @CheckingInputFile $per100 % "; fi
+        fileName=`echo $line | awk '{print $1}'`
+        isOK=`grep "$fileName" $dir/OKtemp | wc -l`
+        if [ "$isOK" == "1" ]; then
+                echo $line >> $dir/succes_inputfiles.das
+        else
+                echo $line >> $dir/failed_inputfiles.das
+        fi
+done < $dir/.inputfiles.das
 
 nFileTota=`cat $dir/.inputfiles.das | wc -l`
 nEvtsTota=`cat $dir/.inputfiles.das | awk '{sum+=$2} END{print sum}'`
@@ -562,14 +562,14 @@ nEvtsGood=`cat $dir/succes_inputfiles.das | awk '{sum+=$2} END{print sum}'`
 nFilesBad=0
 nEvtssBad=0
 if [ -f $dir/failed_inputfiles.das ]; then
-	nFilesBad=`cat $dir/failed_inputfiles.das | wc -l`
-	nEvtssBad=`cat $dir/failed_inputfiles.das | awk '{sum+=$2} END{print sum}'`
+        nFilesBad=`cat $dir/failed_inputfiles.das | wc -l`
+        nEvtssBad=`cat $dir/failed_inputfiles.das | awk '{sum+=$2} END{print sum}'`
 fi
 
 nChFile=`expr $nFileTota - $nFileGood - $nFilesBad`
 nChEvts=`expr $nEvtsTota - $nEvtsGood - $nEvtssBad`
 echo "#FinalCheck $nChFile $nChEvts nFile: total $nFileTota ok $nFileGood bad $nFilesBad nEvents: total $nEvtsTota ok $nEvtsGood bad $nEvtssBad for $dir" > $dir/check.log
-rm -rf $dir/OKtemp 
+rm -rf $dir/OKtemp
 rm -rf $dir/succes_inputfiles.das
 
 nDAS=`cat $dir/.inputfiles.das | wc -l`
@@ -581,80 +581,80 @@ nXML=`ls $dir/cmsRunLog/*.xml  | wc -l`
 echo "#CondorFile DAS $nDAS Log $nLog Out $nOut CMS $nCMS XML $nXML xml $dir" >> $dir/check.log
 cat $dir/check.log
 if [ -f $dir/failed_inputfiles.das ]; then
-	mv $dir/failed_inputfiles.das $dir/inputfiles.das
-	sed 's/queue/#queue/g' $dir/job.jdl > $dir/job.jdlRe
-	sed 's/arguments/#arguments/g' $dir/job.jdlRe > $dir/job.jdlRe1
-	rm -rf $dir/job.jdlRe
-	grep "^arguments" $dir/job.jdl | awk '{$3="1"; print}' >> $dir/job.jdlRe1
-	echo "queue $nFilesBad" >> $dir/job.jdlRe1
-	echo "### "
-	mv -f $dir/job.jdlRe1 $dir/job.jdl
-	tail -n 1 $dir/job.jdl
-	echo -e "\e[1;31m cd $dir ; condor_submit job.jdl; cd - # $nFilesBad  ToReSubmit \e[0m"
-	ReSubmitStrings="${ReSubmitStrings} cd $dir ; condor_submit job.jdl; cd - # $nFilesBad\n"	
-	if [ "$AutoSubmit" == "1" ]; then
-		cd $dir ; condor_submit job.jdl; cd -
-	fi
+        mv $dir/failed_inputfiles.das $dir/inputfiles.das
+        sed 's/queue/#queue/g' $dir/job.jdl > $dir/job.jdlRe
+        sed 's/arguments/#arguments/g' $dir/job.jdlRe > $dir/job.jdlRe1
+        rm -rf $dir/job.jdlRe
+        grep "^arguments" $dir/job.jdl | awk '{$3="1"; print}' >> $dir/job.jdlRe1
+        echo "queue $nFilesBad" >> $dir/job.jdlRe1
+        echo "### "
+        mv -f $dir/job.jdlRe1 $dir/job.jdl
+        tail -n 1 $dir/job.jdl
+        echo -e "\e[1;31m cd $dir ; condor_submit job.jdl; cd - # $nFilesBad  ToReSubmit \e[0m"
+        ReSubmitStrings="${ReSubmitStrings} cd $dir ; condor_submit job.jdl; cd - # $nFilesBad\n"
+        if [ "$AutoSubmit" == "1" ]; then
+                cd $dir ; condor_submit job.jdl; cd -
+        fi
 fi
 nFinalDAS=`cat $dir/.inputfiles.das | wc -l`
 nFinalCMS=`tail -n 1000 $dir/condorLog/condorLog_*.log | grep ThisRunFileOK | wc -l`
-if [ "$nFinalCMS" == "$nFinalDAS" ]; then 
-	echo -e "\e[1;32m#FinalDone $nFinalDAS $nFinalCMS files in $dir \e[0m"; 
-	echo "#FinalDone $nFinalDAS $nFinalCMS files in $dir" > $dir/DoneCheck
+if [ "$nFinalCMS" == "$nFinalDAS" ]; then
+        echo -e "\e[1;32m#FinalDone $nFinalDAS $nFinalCMS files in $dir \e[0m";
+        echo "#FinalDone $nFinalDAS $nFinalCMS files in $dir" > $dir/DoneCheck
 
-	### making listFile
-	nameListFile="${dir}/`basename ${dir}`.condorOutList"
-	if [ -f $nameListFile ]; then rm -rf $nameListFile; fi
-	nROOTcondorOut=`find $PWD/$dir/condorOut/ -maxdepth 1 -name "*.root" | wc -l` 
-	if [ "$nROOTcondorOut" != "0" ]; then
-		ls -v $PWD/$dir/condorOut/*.root > $nameListFile
-	fi
-	nSRM=`find $dir/condorOut/ -maxdepth 1 -name "*.srm" | wc -l`
-	if [ "$nSRM" != "0" ]; then
-		ls -v $dir/condorOut/*.srm | xargs cat >> ${nameListFile}
-	fi
-	isOK=Fail
-	numTabc=`find $dir/condorOut/ -maxdepth 1 -type f | wc -l`
-	numTdef=`cat $nameListFile | wc -l`
-	if [ "$numTabc" == "$numTdef" ]; then isOK=OK ; fi 
-	echo "#ListFile $isOK $numTabc $numTdef ${nameListFile}"
-	### end making listFile
+        ### making listFile
+        nameListFile="${dir}/`basename ${dir}`.condorOutList"
+        if [ -f $nameListFile ]; then rm -rf $nameListFile; fi
+        nROOTcondorOut=`find $PWD/$dir/condorOut/ -maxdepth 1 -name "*.root" | wc -l`
+        if [ "$nROOTcondorOut" != "0" ]; then
+                ls -v $PWD/$dir/condorOut/*.root > $nameListFile
+        fi
+        nSRM=`find $dir/condorOut/ -maxdepth 1 -name "*.srm" | wc -l`
+        if [ "$nSRM" != "0" ]; then
+                ls -v $dir/condorOut/*.srm | xargs cat >> ${nameListFile}
+        fi
+        isOK=Fail
+        numTabc=`find $dir/condorOut/ -maxdepth 1 -type f | wc -l`
+        numTdef=`cat $nameListFile | wc -l`
+        if [ "$numTabc" == "$numTdef" ]; then isOK=OK ; fi
+        echo "#ListFile $isOK $numTabc $numTdef ${nameListFile}"
+        ### end making listFile
 fi
 
 }
 
 function MergeHist() {
-	dirName=$1
-	echo "MergeHist $dirName"
-	if [ ! -d $dirName/condorOut ]; then echo "NotFound $dirName/condorOut"; return; fi
-	bName=`basename $dirName`
-	outName="$dirName/hist_${bName}.root"
-	if [ ! -f $outName ]; then
-		numSRM=`find $dirName/condorOut/ -name "*.srm" | wc -l`
-		if [ "$numSRM" == "0" ]; then
-			hadd -T $outName $dirName/condorOut/*.root >& /dev/null
-		else 
-			hadd -T $outName `cat $dirName/condorOut/*.srm` >& /dev/null
-		fi
-	fi
-#	if [ ! -f $dirName/.histEntries.txt ]; then
-		tempRan=${RANDOM}_${RANDOM}
+        dirName=$1
+        echo "MergeHist $dirName"
+        if [ ! -d $dirName/condorOut ]; then echo "NotFound $dirName/condorOut"; return; fi
+        bName=`basename $dirName`
+        outName="$dirName/hist_${bName}.root"
+        if [ ! -f $outName ]; then
+                numSRM=`find $dirName/condorOut/ -name "*.srm" | wc -l`
+                if [ "$numSRM" == "0" ]; then
+                        hadd -T $outName $dirName/condorOut/*.root >& /dev/null
+                else
+                        hadd -T $outName `cat $dirName/condorOut/*.srm` >& /dev/null
+                fi
+        fi
+#       if [ ! -f $dirName/.histEntries.txt ]; then
+                tempRan=${RANDOM}_${RANDOM}
 cat << EOF > /tmp/histNum${tempRan}.C
 void ReadKey(TDirectory* dir) { TIter nextkey( dir->GetListOfKeys() ); TKey* key;
    while( (key = (TKey*)nextkey())) { TObject *obj = key->ReadObj();
-      if ( obj->IsA()->InheritsFrom( TH1::Class() ) ) { 
-			printf("HistPath %s/%s %.0f\n", dir->GetPath(), obj->GetName(), ((TH1*)obj)->GetEntries() );
-			//cout << "HistPath " << dir->GetPath() << "/" << obj->GetName() << " " <<setw(10) << (size_t)((TH1*)obj)->GetEntries() << endl; 
-		} 
-		else if ( obj->IsA()->InheritsFrom( TDirectory::Class() ) ) { ReadKey((TDirectory*)obj); }
+      if ( obj->IsA()->InheritsFrom( TH1::Class() ) ) {
+                        printf("HistPath %s/%s %.0f\n", dir->GetPath(), obj->GetName(), ((TH1*)obj)->GetEntries() );
+                        //cout << "HistPath " << dir->GetPath() << "/" << obj->GetName() << " " <<setw(10) << (size_t)((TH1*)obj)->GetEntries() << endl;
+                }
+                else if ( obj->IsA()->InheritsFrom( TDirectory::Class() ) ) { ReadKey((TDirectory*)obj); }
 }  }
 void histNum${tempRan}() { TFile* file = TFile::Open("$dirName/hist_${bName}.root"); ReadKey(file); }
 EOF
-		root -l -q /tmp/histNum${tempRan}.C | grep "HistPath" | cut -d: -f2 > $dirName/.histEntries.txt
-		rm -rf /tmp/histNum${tempRan}.C
-		echo "InputEvents `cat $dirName/.inputfiles.das | awk '{sum+=$2} END{print sum}'` " >> $dirName/.histEntries.txt
-#	fi
-	cat $dirName/.histEntries.txt
+                root -l -q /tmp/histNum${tempRan}.C | grep "HistPath" | cut -d: -f2 > $dirName/.histEntries.txt
+                rm -rf /tmp/histNum${tempRan}.C
+                echo "InputEvents `cat $dirName/.inputfiles.das | awk '{sum+=$2} END{print sum}'` " >> $dirName/.histEntries.txt
+#       fi
+        cat $dirName/.histEntries.txt
 }
 
 
@@ -671,9 +671,9 @@ export MyCondorISection=\`echo \${CONDOR_ID} | cut -d_ -f2\`
 export MyCondorMaxFile=\$1
 export MyCondorInputURL="\$2"
 
-echo "MyCondorCluster    \$MyCondorCluster  " 
-echo "MyCondorISection   \$MyCondorISection " 
-echo "MyCondorMaxFile    \$MyCondorMaxFile  " 
+echo "MyCondorCluster    \$MyCondorCluster  "
+echo "MyCondorISection   \$MyCondorISection "
+echo "MyCondorMaxFile    \$MyCondorMaxFile  "
 echo "MyCondorInputURL   \$MyCondorInputURL "
 
 function JsonEvents() {
@@ -681,23 +681,23 @@ function JsonEvents() {
    rootFile=\$2
    xrdURL="root://cms-xrd-global.cern.ch/"
    if [ \$3 ]; then xrdURL=\$3 ; fi
-   
+
    bName=\`basename \$rootFile\`
    bDir=".tempGR_\${bName}"
    mkdir -p \${bDir}
    txt1="\${bDir}/file1"
    txt2="\${bDir}/file2"
-   
+
    echo "edmFileUtil --eventsInLumis \${rootFile} >& \${txt1}"
    edmFileUtil --eventsInLumis \${rootFile} >& \${txt1}
    nTotal=\`grep "runs," \${txt1} | grep root | grep lumis | grep events | awk '{print \$6}'\`
    nLumi=\`grep "runs," \${txt1} | grep root | grep lumis | grep events | awk '{print \$4}'\`
    grep -A \$nLumi "Run           Lumi       # Events" \${txt1} | tail -n \${nLumi} > \${txt2}
-   
+
    numGood=0
    numBad=0
    numTotal=0
-   while read CMD; 
+   while read CMD;
    do
       a=\`echo \$CMD | awk '{print \$1}'\`
       b=\`echo \$CMD | awk '{print \$2}'\`
@@ -713,7 +713,7 @@ function JsonEvents() {
       echo "   GoodLumiCheck \$isOK \$rootFile \$a \$b \$c \$1"
       rm -rf \${bDir}/lumi_\${a}_\${b}.txt
    done < \${txt2}
-   
+
    echo "#edmFileJSONresult \$rootFile Good \$numGood Bad \$numBad Sum \$numTotal == Total \$nTotal \$1"
    rm -rf \$bDir
 }
@@ -739,7 +739,7 @@ fileIdx1=\`expr \$MyCondorISection \* \$MyCondorMaxFile + 1\`
 fileIdx2=\`expr \$fileIdx1 + \$MyCondorMaxFile - 1\`
 fileIdx=0
 rm -rf ThisInputFiles.das
-while read line 
+while read line
 do
    ((fileIdx++))
    if [ \$fileIdx -le \$fileIdx2 ] && [ \$fileIdx -ge \$fileIdx1 ]; then
@@ -765,105 +765,105 @@ do
       mkdir -p \${thisOutDirName}
       mkdir -p \${condorOutDir}/\${thisOutDirName}
    fi
-done 
+done
 echo ""
 
 echo "@ Processing nEvent Check"
 IsLHE=0
 MyJSON=${MyJSON}
 if [ \$MyJSON ]; then
-	bMyJSON=\`basename \$MyJSON\`
-	echo "# GoodLumiCheck \$bMyJSON"
-	for file in \`cat ThisInputFiles.list | awk '{print \$1}'\`
-	do
-		JsonEvents \${bMyJSON} \${file} 2>&1 
-	done | tee goodLumi_\${CONDOR_ID}.log
-	nJSONfile=\`grep "#edmFileJSONresult" goodLumi_\${CONDOR_ID}.log | wc -l\`
-	nJSONevtGoo=\`grep "#edmFileJSONresult" goodLumi_\${CONDOR_ID}.log | awk '{sum+=\$4} END{print sum}'\`
-	nJSONevtBad=\`grep "#edmFileJSONresult" goodLumi_\${CONDOR_ID}.log | awk '{sum+=\$6} END{print sum}'\`
-	nJSONevtTot=\`grep "#edmFileJSONresult" goodLumi_\${CONDOR_ID}.log | awk '{sum+=\$11} END{print sum}'\`
-	echo "@finalEDMJSON \$nJSONfile files \$nJSONevtTot events \$nJSONevtGoo Good \$nJSONevtBad Bad "
-	echo ""
-	if [ "\`cat ThisInputFiles.das | wc -l\`" != "\$nJSONfile" ]; then
-		echo "#Error nFile ThisInputFiles.das and goodLumi_\${CONDOR_ID}.log"
-		echo "#ThisInputFiles.das"
-		cat ThisInputFiles.das
-		echo "#GoodLumi file"
-		cat goodLumi_\${CONDOR_ID}.log
-		echo ""
-		exit
-	fi
+        bMyJSON=\`basename \$MyJSON\`
+        echo "# GoodLumiCheck \$bMyJSON"
+        for file in \`cat ThisInputFiles.list | awk '{print \$1}'\`
+        do
+                JsonEvents \${bMyJSON} \${file} 2>&1
+        done | tee goodLumi_\${CONDOR_ID}.log
+        nJSONfile=\`grep "#edmFileJSONresult" goodLumi_\${CONDOR_ID}.log | wc -l\`
+        nJSONevtGoo=\`grep "#edmFileJSONresult" goodLumi_\${CONDOR_ID}.log | awk '{sum+=\$4} END{print sum}'\`
+        nJSONevtBad=\`grep "#edmFileJSONresult" goodLumi_\${CONDOR_ID}.log | awk '{sum+=\$6} END{print sum}'\`
+        nJSONevtTot=\`grep "#edmFileJSONresult" goodLumi_\${CONDOR_ID}.log | awk '{sum+=\$11} END{print sum}'\`
+        echo "@finalEDMJSON \$nJSONfile files \$nJSONevtTot events \$nJSONevtGoo Good \$nJSONevtBad Bad "
+        echo ""
+        if [ "\`cat ThisInputFiles.das | wc -l\`" != "\$nJSONfile" ]; then
+                echo "#Error nFile ThisInputFiles.das and goodLumi_\${CONDOR_ID}.log"
+                echo "#ThisInputFiles.das"
+                cat ThisInputFiles.das
+                echo "#GoodLumi file"
+                cat goodLumi_\${CONDOR_ID}.log
+                echo ""
+                exit
+        fi
 else
    rm -rf edmEvents_\${CONDOR_ID}.log
    while read line
    do
       f1=\`echo \$line | awk '{print \$1}'\`
       f2=\`echo \$line | awk '{print \$2}'\`
-      if [ \$f2 ]; then 
-   		echo "\$f1 \$f2" >> edmEvents_\${CONDOR_ID}.log 
-   	fi
-      if [ ! \$f2 ]; then 
+      if [ \$f2 ]; then
+                echo "\$f1 \$f2" >> edmEvents_\${CONDOR_ID}.log
+        fi
+      if [ ! \$f2 ]; then
           for i in 1 2 3 4 5 6 6 6 6 6
           do
               rm -rf tempEDM.txt
               if [ "\${f1:(-5)}" == ".root" ]; then
-						if [ "\${f1:0:6}" == "/store" ]; then
-	              		#echo "    @edmEventSize -v root://cms-xrd-global.cern.ch/\$f1 try \$i"
-   	               #edmEventSize -v root://cms-xrd-global.cern.ch/\$f1 | grep "^File" > tempEDM.txt
-	              		echo "    @edmEventSize -v \${MyCondorInputURL}/\$f1 try \$i"
-   	               edmEventSize -v \${MyCondorInputURL}//\$f1 | grep "^File" > tempEDM.txt
-						else
-	              		echo "    @edmEventSize -v \$f1 try \$i"
-   	               edmEventSize -v \$f1 | grep "^File" > tempEDM.txt
-						fi
-						cat tempEDM.txt
+                                                if [ "\${f1:0:6}" == "/store" ]; then
+                                #echo "    @edmEventSize -v root://cms-xrd-global.cern.ch/\$f1 try \$i"
+                       #edmEventSize -v root://cms-xrd-global.cern.ch/\$f1 | grep "^File" > tempEDM.txt
+                                echo "    @edmEventSize -v \${MyCondorInputURL}/\$f1 try \$i"
+                       edmEventSize -v \${MyCondorInputURL}//\$f1 | grep "^File" > tempEDM.txt
+                                                else
+                                echo "    @edmEventSize -v \$f1 try \$i"
+                       edmEventSize -v \$f1 | grep "^File" > tempEDM.txt
+                                                fi
+                                                cat tempEDM.txt
               elif [ "\${f1:(-4)}" == ".lhe" ]; then
-						IsLHE=1
-						tempLHEName=\$f1
+                                                IsLHE=1
+                                                tempLHEName=\$f1
                   tempLHEName=\${tempLHEName/file:/}
                   nLHEevents=\`grep "<event>" \$tempLHEName | wc -l\`
                   echo "\$tempLHEName LHE File \$nLHEevents" > tempEDM.txt
-						cat tempEDM.txt
-					else
-  						tempLHEName=\$f1
+                                                cat tempEDM.txt
+                                        else
+                                                tempLHEName=\$f1
                   tempLHEName=\${tempLHEName/file:/}
-  	               echo "\$tempLHEName Unkonwn File 0" > tempEDM.txt
-						cat tempEDM.txt
-					fi
-              if [ "\`grep File tempEDM.txt | wc -l\`" == "1" ]; then 
+                       echo "\$tempLHEName Unkonwn File 0" > tempEDM.txt
+                                                cat tempEDM.txt
+                                        fi
+              if [ "\`grep File tempEDM.txt | wc -l\`" == "1" ]; then
                   f2=\`grep "File" tempEDM.txt | awk '{print \$4}'\`
                   echo "\$f1 \$f2" >> edmEvents_\${CONDOR_ID}.log
                   break
-					else
-						sleep "\${i}0"
+                                        else
+                                                sleep "\${i}0"
               fi
           done
       fi
    done < ThisInputFiles.das
-	if [ "\`cat ThisInputFiles.das | wc -l\`" != "\`cat edmEvents_\${CONDOR_ID}.log | wc -l\`" ]; then 
-		echo "Error edmFileCheck"
-		echo "### ThisInputFiles.das"
-		cat ThisInputFiles.das
-		echo "### edmEvents"
-		cat edmEvents_\${CONDOR_ID}.log
-		echo ""
-		exit
-	fi
+        if [ "\`cat ThisInputFiles.das | wc -l\`" != "\`cat edmEvents_\${CONDOR_ID}.log | wc -l\`" ]; then
+                echo "Error edmFileCheck"
+                echo "### ThisInputFiles.das"
+                cat ThisInputFiles.das
+                echo "### edmEvents"
+                cat edmEvents_\${CONDOR_ID}.log
+                echo ""
+                exit
+        fi
    nJSONfile=\`cat edmEvents_\${CONDOR_ID}.log | wc -l\`
    nJSONevtGoo=\`cat edmEvents_\${CONDOR_ID}.log | awk '{sum+=\$2} END{print sum}'\`
    nJSONevtBad=0
    nJSONevtTot=\${nJSONevtGoo}
-	echo "@finalEDMJSON \$nJSONfile files \$nJSONevtTot events \$nJSONevtGoo Good \$nJSONevtBad Bad "
-	echo ""
+        echo "@finalEDMJSON \$nJSONfile files \$nJSONevtTot events \$nJSONevtGoo Good \$nJSONevtBad Bad "
+        echo ""
 fi
 if [ "\${ThisSumNEventsInDAS}" == "0" ]; then ThisSumNEventsInDAS=\${nJSONevtTot} ; fi
 
 echo "# cmsRun"
 echo "@@@ cmsRun Start \`date\`"
-if [ "\${IsLHE}" == "1" ]; then 
-	firstRunNumber=\`expr \$MyCondorISection + 1\`
-	echo "#### Set FirstRun Number is \$firstRunNumber for MC Prod"
-	echo "process.source.firstRun = cms.untracked.uint32(\${firstRunNumber})" >> CMSSW.py
+if [ "\${IsLHE}" == "1" ]; then
+        firstRunNumber=\`expr \$MyCondorISection + 1\`
+        echo "#### Set FirstRun Number is \$firstRunNumber for MC Prod"
+        echo "process.source.firstRun = cms.untracked.uint32(\${firstRunNumber})" >> CMSSW.py
 fi
 if [ -f beforeCMD ]; then echo "### Start beforeCMD" ; source beforeCMD;  echo "### END beforeCMD"; fi
 cmsRun -j cmsRunLog_\${CONDOR_ID}.xml  CMSSW.py 2>&1 | tee cmsRunLog_\${CONDOR_ID}.log
@@ -875,12 +875,12 @@ if [ -f afterCMD ]; then echo "### Start afterCMD" ; source afterCMD;  echo "###
 bRootFileNames=""
 for outRootFile in \`cat CMSSW.outname\`
 do
-	if [ "\${outRootFile:0:5}" == "file:" ]; then outRootFile=\${outRootFile/file:/}; fi ### 
+        if [ "\${outRootFile:0:5}" == "file:" ]; then outRootFile=\${outRootFile/file:/}; fi ###
    thisOutDirName=\`dirname \$outRootFile\`
    bRootFile=\`basename \${outRootFile}\`
-	thisFileNameName="\${bRootFile%.*}"
-	thisFileNameExt="\${bRootFile##*.}"
-	mv \${outRootFile}   \${FirstDir}/condorOut/\${thisOutDirName}/\${thisFileNameName}_\${CONDOR_ID}.\${thisFileNameExt}
+        thisFileNameName="\${bRootFile%.*}"
+        thisFileNameExt="\${bRootFile##*.}"
+        mv \${outRootFile}   \${FirstDir}/condorOut/\${thisOutDirName}/\${thisFileNameName}_\${CONDOR_ID}.\${thisFileNameExt}
 done
 echo ""
 
@@ -909,15 +909,15 @@ echo "#FinalCondorRunResult cmsRunStatus \$cmsRunStatus DiffnFiles \$checkNFile 
 echo "##########"
 fileBit="-9"
 if [ "\${checkNFile}\${checkNEvt1}\${checkNEvt2}" == "000" ]; then
-	fileBit="OK"
-else 
-	fileBit="BAD"
+        fileBit="OK"
+else
+        fileBit="BAD"
 fi
 
 while read line
 do
-	echo "ThisRunFile\${fileBit} \$line"
-done < ThisInputFiles.das 
+        echo "ThisRunFile\${fileBit} \$line"
+done < ThisInputFiles.das
 echo ""
 
 if [ "\${cmsRunStatus}" == "0" ] && [ "\${SRMOUTDIR:0:4}" != "NULL" ]; then
@@ -931,7 +931,7 @@ if [ "\${cmsRunStatus}" == "0" ] && [ "\${SRMOUTDIR:0:4}" != "NULL" ]; then
       echo "\$file -> \$SRMHOST/\$SRMUSERDIR/\$SRMOUTDIR/condorOut/\$outName"
       xrdcp \$file \$SRMHOST/\$SRMUSERDIR/\$SRMOUTDIR/condorOut/\$outName
       echo "\$SRMHOST/\$SRMUSERDIR/\$SRMOUTDIR/condorOut/\$outName" > \${file}.srm
-		rm -rf \${file}
+                rm -rf \${file}
    done
    rm -rf condorOutSRM
    ln -s \$FirstDir/cmsRunLog cmsRunLogSRM
@@ -941,10 +941,10 @@ if [ "\${cmsRunStatus}" == "0" ] && [ "\${SRMOUTDIR:0:4}" != "NULL" ]; then
       echo "\$file -> \$SRMHOST/\$SRMUSERDIR/\$SRMOUTDIR/cmsRunLog/\$outName"
       xrdcp \$file \$SRMHOST/\$SRMUSERDIR/\$SRMOUTDIR/cmsRunLog/\$outName
       #echo "\$SRMHOST/\$SRMUSERDIR/\$SRMOUTDIR/cmsRunLog/\$outName" > \${file}.srm
-		#rm -rf \${file}
+                #rm -rf \${file}
    done
    rm -rf cmsRunLogSRM
-	echo "### Done SRM"
+        echo "### Done SRM"
 fi
 echo "### condorOut ##############################"
 ls -al \$FirstDir/condorOut
@@ -953,12 +953,12 @@ ls -al \$FirstDir/cmsRunLog
 echo "#################################"
 echo "Done bye bye"
 EOF
-	chmod +x ${myCondorWorkDir}/runCMSRUN.sh
+        chmod +x ${myCondorWorkDir}/runCMSRUN.sh
 }
 
 function MakeLocalTest() {
 cat << EOF > ${myCondorWorkDir}/.localTest.sh
-#!/bin/bash 
+#!/bin/bash
 
 idx=0
 if [ \$1 ]; then idx=\$1; fi
@@ -973,70 +973,66 @@ export CONDOR_ID=localTest_0
 ./runCMSRUN.sh 1 $MyURL 2>&1 | tee condorLog_\${CONDOR_ID}.log
 ls -al \$PWD
 EOF
-	chmod +x ${myCondorWorkDir}/.localTest.sh
+        chmod +x ${myCondorWorkDir}/.localTest.sh
 }
 
 argvPar $@
 
 if [ "${MyCheckDir}" != "" ]; then
-	for doCheckDir in $MyCheckDir; do  DoCheck $doCheckDir;  echo ""; done
-	if [ "${ReCheckStrings}" != "" ]; then
-		echo "### ReCheck #####################"
-		ReCheckStringsP=$(printf "$ReCheckStrings")
-		echo -e "\e[1;31m"
-		printf '%s\n' "${ReCheckStringsP}"
- 		echo -e "\e[0m"
-		echo "#################################"
-		echo ""
-	fi
-	if [ "$ReSubmitStrings" != "" ]; then
-		echo "### ReSubmit ####################"
-		ReSubmitStringsP=$(printf "$ReSubmitStrings")
-		echo -e "\e[1;31m"
-		printf '%s\n' "${ReSubmitStringsP}"
- 		echo -e "\e[0m"
-		echo "#################################"
-		echo ""
-	fi
-	exit
+        for doCheckDir in $MyCheckDir; do  DoCheck $doCheckDir;  echo ""; done
+        if [ "${ReCheckStrings}" != "" ]; then
+                echo "### ReCheck #####################"
+                ReCheckStringsP=$(printf "$ReCheckStrings")
+                echo -e "\e[1;31m"
+                printf '%s\n' "${ReCheckStringsP}"
+                echo -e "\e[0m"
+                echo "#################################"
+                echo ""
+        fi
+        if [ "$ReSubmitStrings" != "" ]; then
+                echo "### ReSubmit ####################"
+                ReSubmitStringsP=$(printf "$ReSubmitStrings")
+                echo -e "\e[1;31m"
+                printf '%s\n' "${ReSubmitStringsP}"
+                echo -e "\e[0m"
+                echo "#################################"
+                echo ""
+        fi
+        exit
 fi
 
 if [ "${MyStatusDir}" != "" ]; then
-	if [ "${MyStatusDir}" == "-status" ]; then 
-		DoStatus 
-	else
-		for doMyStatusDir in $MyStatusDir; do DoStatus $doMyStatusDir;  echo ""; done
-	fi
-	exit
+        if [ "${MyStatusDir}" == "-status" ]; then
+                DoStatus
+        else
+                for doMyStatusDir in $MyStatusDir; do DoStatus $doMyStatusDir;  echo ""; done
+        fi
+        exit
 fi
+
 
 if [ "${MyMergeHistDir}" != "" ]; then
-	for doMergeHistDir in $MyMergeHistDir; do  MergeHist $doMergeHistDir;  echo ""; done
-	exit
+        for doMergeHistDir in $MyMergeHistDir; do  MergeHist $doMergeHistDir;  echo ""; done
+        exit
 fi
 
-
 if [ "${MyXMLDirs}" != "" ]; then
-	for MyXMLDir in $MyXMLDirs
-	do
-		thisDir=`readlink -e $MyXMLDir`
-		name=`basename $thisDir`
-		echo "Making... $name"
-		fjr2json.py --output ${MyXMLDir}/${name}.json ${MyXMLDir}/cmsRunLog/*.xml
-		ls -al ${MyXMLDir}/${name}.json
-	done
-	exit
+        for MyXMLDir in $MyXMLDirs
+        do
+                thisDir=`readlink -e $MyXMLDir`
+                name=`basename $thisDir`
+                echo "Making... $name"
+                fjr2json.py --output ${MyXMLDir}/${name}.json ${MyXMLDir}/cmsRunLog/*.xml
+                ls -al ${MyXMLDir}/${name}.json
+        done
+        exit
 fi
 
 PrintSet
 if [ "$CMSSW_BASE" == "" ]; then echo "NotFound CMSSW; Setup CMSSW"; exit; fi
 mkdir -p ${myCondorWorkDir}
-MakeDataList 
+MakeDataList
 MakeCMSSW
 MakeRun
 MakeLocalTest
 MakeJob
-
-
-
-
