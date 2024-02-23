@@ -2,10 +2,11 @@
 <use name="FWCore/PluginManager"/>
 <use name="FWCore/ParameterSet"/>
 <use name="CommonTools/UtilAlgos"/>
-<use name="FWCore/ServiceRegistry"/> 
+<use name="FWCore/ServiceRegistry"/>
 <use name="DataFormats/PatCandidates" />
 <use name="RecoEgamma/EgammaTools" />
 <use name="RecoEgamma/ElectronIdentification" />
+<use name="PhysicsTools/SelectorUtils" />
 <use name="CommonTools/Egamma" />
 <use name="SimDataFormats/GeneratorProducts" />
 <use name="HLTrigger/HLTcore" />
