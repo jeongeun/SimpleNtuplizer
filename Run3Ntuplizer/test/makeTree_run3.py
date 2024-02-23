@@ -28,29 +28,32 @@ from Configuration.AlCa.autoCond import autoCond
 if (varOptions.isMC):
 # (GT info from) https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideGlobalHLT#CMSSW_12_4_X
 #        process.GlobalTag.globaltag = '122X_mcRun3_2021_realistic_v9' # for CMSSW 12_2_X MC production
-        process.GlobalTag.globaltag = '124X_mcRun3_2022_realistic_v12' # for CMSSW 12_4_X MC production
+#        process.GlobalTag.globaltag = '124X_mcRun3_2022_realistic_v12' # for CMSSW 12_4_X MC production
+        process.GlobalTag.globaltag = '130X_mcRun3_2022_realistic_postEE_v6'#'124X_mcRun3_2022_realistic_postEE_v1' # for CMSSW 12_4_X MC production
         inputFileName = [
 #        'root://cms-xrd-global.cern.ch//store/mc/Run3Winter22MiniAOD/TTTo2L2Nu_CP5_13p6TeV_powheg-pythia8/MINIAODSIM/122X_mcRun3_2021_realistic_v9-v2/2550000/026b4aa4-fbe9-4d94-9ab9-03b9bd034451.root' # 122X MC
-        'root://cms-xrd-global.cern.ch//store/mc/Run3Summer22MiniAODv3/GJet_PT-15to6000_TuneCP5-Flat_13p6TeV_pythia8/MINIAODSIM/124X_mcRun3_2022_realistic_v12-v2/70000/79ca88e1-5803-4a26-9d99-a16629658a95.root' # 124X MC
+        'root://cms-xrd-global.cern.ch///store/mc/Run3Summer22EEMiniAODv4/DYto2E_MLL-50to120_TuneCP5_13p6TeV_powheg-pythia8/MINIAODSIM/130X_mcRun3_2022_realistic_postEE_v6-v2/2520000/0cab372e-d87d-4b3f-b961-00558c916dd8.root'
 ]
-        outputFileName = 'ntuple_mc_124X.root'
-        process.source = cms.Source("PoolSource", 
+        outputFileName = 'ntuple_mc_130X_post.root'
+        process.source = cms.Source("PoolSource",
                          fileNames = cms.untracked.vstring(inputFileName),
 )
 else:
-        process.GlobalTag.globaltag = '124X_dataRun3_Prompt_v4' #for CMSSW >= 12_4_3 PR data 2022
+        process.GlobalTag.globaltag = '124X_dataRun3_Prompt_v10' #for CMSSW >= 12_4_11_patch PR data 2022
         inputFileName = [
-        'root://cms-xrd-global.cern.ch//store/data/Run2022C/Muon/MINIAOD/PromptReco-v1/000/356/426/00000/66a38e5c-e248-41bb-8729-d2d486018e87.root'
+#        'root://cms-xrd-global.cern.ch//store/data/Run2022C/Muon/MINIAOD/PromptReco-v1/000/356/426/00000/66a38e5c-e248-41bb-8729-d2d486018e87.root'
+        'file:/d0/scratch/jelee/SimpleNtuplizer/CMSSW_12_4_11/src/SimpleNtuplizer/Run3Ntuplizer/data/pickevents.root'
+#       check for valentina RunF number: 360950, event: 666845270, lumi section: 314
 #        'file:./66a38e5c-e248-41bb-8729-d2d486018e87.root'
 #/cms/ldap_home/jelee/work/Run32022PRdata/muon-runC-PR_test.root'
 ]
-        outputFileName = 'ntuple_pr_data_.root'
-        process.source = cms.Source("PoolSource", 
+        outputFileName = 'ntuple_data.root'
+        process.source = cms.Source("PoolSource",
                          fileNames = cms.untracked.vstring(inputFileName),
-                         lumisToProcess = LumiList.LumiList(filename = 'Cert_Collisions2022_355100_360491_Golden.json').getVLuminosityBlockRange()
+                         lumisToProcess = LumiList.LumiList(filename = 'JSON/Cert_Collisions2022_355100_362760_Golden.json').getVLuminosityBlockRange()
 )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100) )
 process.TFileService = cms.Service("TFileService", fileName = cms.string(outputFileName) )
 
 print ("### isMC ", varOptions.isMC                      )
@@ -91,17 +94,17 @@ if (varOptions.isMC):
                                  eleIdFullInfoMap        = cms.InputTag("egmGsfElectronIDs:heepElectronID-HEEPV71"),
                                  eleIdVerbose            = cms.bool(True),
                                  # Effective areas for computing PU correction for isolations
-                                 effAreasConfigFile      = cms.FileInPath("/d0/scratch/jelee/SimpleNtuplizer/CMSSW_12_4_11/src/SimpleNtuplizer/Run3Ntuplizer/data/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_94X.txt"),
+                                 effAreasConfigFile      = cms.FileInPath("SimpleNtuplizer/Run3Ntuplizer/data/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_122X.txt"), #effAreaElectrons_cone03_pfNeuHadronsAndPhotons_94X.txt"),
                                  pfmets                  = cms.InputTag("slimmedMETs"),
                                  puppimets               = cms.InputTag("slimmedMETsPuppi"),
-	                         triggerResults          = cms.InputTag("TriggerResults","","HLT"),
-	                         triggerObjects          = cms.InputTag("slimmedPatTrigger"),
-	                         triggerPrescales        = cms.InputTag("patTrigger"),
-                                 #metsNoHF         = cms.InputTag("slimmedMETsNoHF"), 
+                                 triggerResults          = cms.InputTag("TriggerResults","","HLT"),
+                                 triggerObjects          = cms.InputTag("slimmedPatTrigger"),
+                                 triggerPrescales        = cms.InputTag("patTrigger"),
+                                 #metsNoHF         = cms.InputTag("slimmedMETsNoHF"),
                                  #hltProcess       = cms.string("HLT"),
                                  #hltPath          = cms.string("HLT_Photon175_v"),
-	                         #triggerIdentifiers = cms.vstring(['HLT_Ele*','HLT_Mu*','HLT_TkMu*']),
-	                         #triggerLabelsName  = cms.vstring(),
+                                 #triggerIdentifiers = cms.vstring(['HLT_Ele*','HLT_Mu*','HLT_TkMu*']),
+                                 #triggerLabelsName  = cms.vstring(),
                                  # Objects specific to AOD format
                                  #pileup       = cms.InputTag("addPileupInfo"),
                                  #electrons    = cms.InputTag("gedGsfElectrons"),
@@ -123,8 +126,9 @@ else:
                                  eleIdMap_Cut94V2_Veto   = cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-Fall17-94X-V2-veto"),
                                  eleIdFullInfoMap        = cms.InputTag("egmGsfElectronIDs:heepElectronID-HEEPV71"),
                                  eleIdVerbose            = cms.bool(True),
+                                 effAreasConfigFile      = cms.FileInPath("SimpleNtuplizer/Run3Ntuplizer/data/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_122X.txt"),
                                  #effAreasConfigFile      = cms.FileInPath("SimpleNtuplizer/Run3Ntuplizer/data/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_94X.txt"),
-                                 effAreasConfigFile      = cms.FileInPath("/d0/scratch/jelee/SimpleNtuplizer/CMSSW_12_4_11/src/SimpleNtuplizer/Run3Ntuplizer/data/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_94X.txt"),
+                                 #effAreasConfigFile      = cms.FileInPath("/d0/scratch/jelee/Run3HLT/2023March/CMSSW_12_4_13/src/SimpleNtuplizer/Run3Ntuplizer/data/effAreaElectrons_cone03_pfNeuHadronsAndPhotons_94X.txt"),
                                  pfmets                  = cms.InputTag("slimmedMETs"),
                                  puppimets               = cms.InputTag("slimmedMETsPuppi"),
                                  triggerResults          = cms.InputTag("TriggerResults","","HLT"),
