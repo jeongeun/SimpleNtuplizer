@@ -2,6 +2,26 @@ cmsenv
 voms-proxy-init -voms cms -valid 100:00 -rfc
 source /cvmfs/cms.cern.ch/crab3/crab.sh
 
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-50to120_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-120to200_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-200to400_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-400to800_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-800to1500_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-1500to2500_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-2500to4000_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-4000to6000_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/DYto2E_MLL-6000_TuneCP5_13p6TeV_powheg-pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/GJet_PT-15to6000_TuneCP5-Flat_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-120to170_EMEnriched_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-170to300_EMEnriched_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-300_EMEnriched_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-1000to1400_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-1400to1800_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-1800to2400_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-2400to3200_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-3200_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+#./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-50to80_EMEnriched_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
+#./cmsCondor.sh -py=makeTree_run3_post.py -nfiles=1 -arg=isMC=True -dataset=/QCD_PT-80to120_EMEnriched_TuneCP5_13p6TeV_pythia8/Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2/MINIAODSIM
 
 # 2022 MC
 #./cmsCondor.sh -py=makeTree.py -dataset=/TTTo2L2Nu_CP5_13p6TeV_powheg-pythia8/Run3Winter22MiniAOD-122X_mcRun3_2021_realistic_v9-v2/MINIAODSIM -nfiles=1 -arg=isMC=True
