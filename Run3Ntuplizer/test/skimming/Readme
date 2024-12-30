@@ -1,0 +1,40 @@
+# After condorRun, 
+# you will get your skimmed nt roots in specific condor_*dataset_name*/condorOut/ directory for each dataset.
+#
+# To calculate **trigger efficiency & SF**,
+# you need to extract related values pt, sceta/phi, hlt information, etc
+#
+# To make a very light histogram root,
+# create additional **makeHist.cc** code and do g++ compiling
+#
+# (1) makeHist.cc (for calculate trigger efficiency)
+# ==> make two kinds of histograms: denominator_ele, numerator_ele
+# denominator (passing reference trigger & heep & trigMatching)
+# numerator (same as denominator & passing (hlt_ele115 or hlt_pho200))
+#
+# also **makeAlpha.cc** code (this is for syst. study for orthogonal method)
+#
+# (2) makeAlpha.cc (for systematic study)
+# Correlations (alpha) between reference trig and signal trig is taken as a syst err. 
+# alpha is calculated with only MC (ttbar sample)
+# alpha = (signal trig eff x ref trig eff) / (signal & ref trigs eff)
+#
+#
+# More details of hlt study in AN-24-075 (Wprime main AN for Run3 = 2022+2023)
+#
+#
+# For example (how we compile & run),
+# export LD_LIBRARY_PATH=${CMSSW_BASE}/src:${LD_LIBRARY_PATH}
+# g++ `root-config --cflags` `root-config --libs` makeHist.cc -L${CMSSW_BASE}/src -o makeHist.exe
+#
+## (how to) ./makeHist.exe [Input Directory] [Output file name] >& [Log file name]
+#
+#./makeHist.exe /pnfs/knu.ac.kr/data/cms/store/user/jelee/ntuples/13p6TeV/data2023/Muon/condor_Muon0_D_Run2023C-22Sep2023_v1-v1_D_MINIAOD_240323_035236/condorOut/ heff_23Muon0_ReReco_Cv1_mergebins1.root  >& sum_23Muon_ReReco_Cv1_mergebins1.log
+
+# All steps are implelemted the shell script **runAtOnce.sh**
+# So, You can just simply edit this shell script and run it.
+# Then you will get the histogram & log files for each dataset.
+
+$ source runAtOnce.sh
+$ cd draw
+$ python3 draw_XX.py

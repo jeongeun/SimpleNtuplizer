@@ -1,0 +1,33 @@
+Running 0 % 0 / 124464137
+Running 10 % 13829348 / 124464137
+Running 20 % 27658696 / 124464137
+Running 30 % 41488044 / 124464137
+Running 40 % 55317392 / 124464137
+Running 50 % 69146740 / 124464137
+Running 60 % 82976088 / 124464137
+Running 70 % 96805436 / 124464137
+Running 80 % 110634784 / 124464137
+Running 90 % 124464132 / 124464137
+##### /pnfs/knu.ac.kr/data/cms/store/user/jelee/ntuples/13p6TeV/data2023/condor_Muon1_D_Run2023C-22Sep2023_v4-v1_D_MINIAOD_240323_035454/condorOut/ ## outfile = 0x29f8f60
+ Total Evt                = 124464137
+ Event HLT_Mu             = 5070319 /Total = 4.07372 %
+ EB,EE Electron           = 3275280 + 2104875 = 5380155 	(eb/ee) 1.55604
+ EB,EE HEEPV70            = 25030 + 7226 = 32256 (eb/ee) 3.46388
+ EB,EE TrgMatch           = 25030 + 7226 = 32256 	(eb/ee) 3.46388
+ EB,EE HEEP pt>130 cut    = 32256 => 4073 	,87.3729 % out-28183
+ EB,EE HEEP pt>240 cut    = 32256 => 419 	,98.701 % out-31837
+ EB,EE HLT_Pho200         = 741 + 189 	(eb/ee) 3.92063
+ EB,EE HLT_ORALL          = 4487 + 1164 	(eb/ee) 3.85481
+===== without pt cut ================================== 
+ eff (HEEP/Base) EB,EE    = 0.764209 % 	, 0.343298 % 
+ eff (TrMatch/HEEP) EB,EE = 100 % 	, 100 % 
+ eff (Ele115/HEEP)        = 17.8026 % 	, 15.8179 % 
+ eff (Pho200/HEEP)        = 2.96045 % 	, 2.61555 % 
+ eff (OR/HEEP)115,200 = 17.9265 % 	, 16.1085 % 
+==== with offline pt cut =================================== 
+ den (HLT_Mu && HEEP)     = 4073 (130) 	419 (240)
+ num (den && HLT_Ele115)  = 3946  	(Efficiency = 96.8819 %)
+ num (den && HLT_Pho200)  = 417  	(Efficiency = 99.5227 %)
+ num (den && HLT_ORALL)   = 3972  	(Efficiency = 97.5203 %)
+======================================= 
+**** File Closed. 

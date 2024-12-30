@@ -1,0 +1,33 @@
+Running 0 % 0 / 24556000
+Running 10 % 2728444 / 24556000
+Running 20 % 5456888 / 24556000
+Running 30 % 8185332 / 24556000
+Running 40 % 10913776 / 24556000
+Running 50 % 13642220 / 24556000
+Running 60 % 16370664 / 24556000
+Running 70 % 19099108 / 24556000
+Running 80 % 21827552 / 24556000
+Running 90 % 24555996 / 24556000
+##### ../condor_TTto2L2Nu_TuneCP5_13p6TeV_powheg-pythia8_D_Run3Summer23BPixMiniAODv4-130X_mcRun3_2023_realistic_postBPix_v2-v3_D_MINIAODSIM_240330_025149/condorOut/ ## outfile = 0x2a1d060
+ Total Evt                = 24556000
+ Event HLT_Mu             = 8918003 /Total = 36.317 %
+ EB,EE Electron           = 8526055 + 2965832 = 11491887 	(eb/ee) 2.87476
+ EB,EE HEEPV70            = 1757533 + 385986 = 2143519 (eb/ee) 4.55336
+ EB,EE TrgMatch           = 1757533 + 385986 = 2143519 	(eb/ee) 4.55336
+ EB,EE HEEP pt>130 cut    = 2143519 => 237109 	,88.9383 % out-1906410
+ EB,EE HEEP pt>240 cut    = 2143519 => 18251 	,99.1485 % out-2125268
+ EB,EE HLT_Pho200         = 40590 + 5813 	(eb/ee) 6.98263
+ EB,EE HLT_ORALL          = 300538 + 57162 	(eb/ee) 5.25765
+===== without pt cut ================================== 
+ eff (HEEP/Base) EB,EE    = 20.6137 % 	, 13.0144 % 
+ eff (TrMatch/HEEP) EB,EE = 100 % 	, 100 % 
+ eff (Ele115/HEEP)        = 17.002 % 	, 14.749 % 
+ eff (Pho200/HEEP)        = 2.30949 % 	, 1.50601 % 
+ eff (OR/HEEP)115,200 = 17.1 % 	, 14.8093 % 
+==== with offline pt cut =================================== 
+ den (HLT_Mu && HEEP)     = 237109 (130) 	18251 (240)
+ num (den && HLT_Ele115)  = 231654  	(Efficiency = 97.6994 %)
+ num (den && HLT_Pho200)  = 18177  	(Efficiency = 99.5945 %)
+ num (den && HLT_ORALL)   = 232417  	(Efficiency = 98.0212 %)
+======================================= 
+**** File Closed. 
